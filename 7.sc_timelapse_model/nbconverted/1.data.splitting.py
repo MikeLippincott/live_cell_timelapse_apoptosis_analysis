@@ -6,7 +6,7 @@
 # The training and validation data only contains single-cells that have ground truth labels at the terminal time point.
 # While testing and holdout data contains cells that do and no not have ground truth labels at the terminal time point.
 
-# In[ ]:
+# In[1]:
 
 
 import itertools
@@ -28,7 +28,7 @@ else:
     from tqdm import tqdm
 
 
-# In[ ]:
+# In[2]:
 
 
 # read in the data
@@ -139,23 +139,60 @@ print(f"cell_wout_ground_truth_df shape: {cell_wout_ground_truth_df.shape}")
 
 # ##
 
-# In[ ]:
+# In[9]:
 
 
-# split the data into 80, 10, 10 stratified by the well
-train_sc_w_ground_truth_df, test_sc_w_ground_truth_df = train_test_split(
-    cell_w_ground_truth_df,
+cell_w_ground_truth_df
+
+
+# In[10]:
+
+
+from sklearn.model_selection import train_test_split
+
+# Group by Metadata_sc_unique_track_id
+grouped = cell_w_ground_truth_df.groupby("Metadata_sc_unique_track_id")
+
+# Create a representative DataFrame for splitting
+grouped_df = grouped.first().reset_index()
+
+# Perform stratified split on the grouped data
+train_groups, test_groups = train_test_split(
+    grouped_df,
     test_size=0.2,
-    stratify=cell_w_ground_truth_df["Metadata_Well"],
+    stratify=grouped_df["Metadata_Well"],
     random_state=0,
 )
-test_sc_w_ground_truth_df, val_sc_w_ground_truth_df = train_test_split(
-    test_sc_w_ground_truth_df,
+test_groups, val_groups = train_test_split(
+    test_groups,
     test_size=0.5,  # 50% of 20% is 10%
-    stratify=test_sc_w_ground_truth_df["Metadata_Well"],
+    stratify=test_groups["Metadata_Well"],
     random_state=0,
 )
 
+# Get the indices for each split
+train_indices = cell_w_ground_truth_df[
+    cell_w_ground_truth_df["Metadata_sc_unique_track_id"].isin(
+        train_groups["Metadata_sc_unique_track_id"]
+    )
+].index
+val_indices = cell_w_ground_truth_df[
+    cell_w_ground_truth_df["Metadata_sc_unique_track_id"].isin(
+        val_groups["Metadata_sc_unique_track_id"]
+    )
+].index
+test_indices = cell_w_ground_truth_df[
+    cell_w_ground_truth_df["Metadata_sc_unique_track_id"].isin(
+        test_groups["Metadata_sc_unique_track_id"]
+    )
+].index
+
+# Create the train, validation, and test DataFrames
+train_sc_w_ground_truth_df = cell_w_ground_truth_df.loc[train_indices].copy()
+val_sc_w_ground_truth_df = cell_w_ground_truth_df.loc[val_indices].copy()
+test_sc_w_ground_truth_df = cell_w_ground_truth_df.loc[test_indices].copy()
+
+# Assign metadata for data splits
 train_sc_w_ground_truth_df["Metadata_data_split"] = "train"
 train_sc_w_ground_truth_df["Metadata_ground_truth_present"] = True
 val_sc_w_ground_truth_df["Metadata_data_split"] = "val"
@@ -163,9 +200,12 @@ val_sc_w_ground_truth_df["Metadata_ground_truth_present"] = True
 test_sc_w_ground_truth_df["Metadata_data_split"] = "test"
 test_sc_w_ground_truth_df["Metadata_ground_truth_present"] = True
 
+# Print the shapes of the splits
 print(f"train_sc_w_ground_truth_df shape: {train_sc_w_ground_truth_df.shape[0]}")
 print(f"val_sc_w_ground_truth_df shape: {val_sc_w_ground_truth_df.shape[0]}")
 print(f"test_sc_w_ground_truth_df shape: {test_sc_w_ground_truth_df.shape[0]}")
+
+# Assertions to verify the splits
 assert (
     train_sc_w_ground_truth_df.shape[0]
     + val_sc_w_ground_truth_df.shape[0]
@@ -185,7 +225,7 @@ assert (
     == 0.1
 )
 
-# add to records
+# Add to records
 index_data_split_and_ground_truth_dict["index"].append(
     train_sc_w_ground_truth_df.index.tolist()
 )
@@ -217,7 +257,7 @@ index_data_split_and_ground_truth_dict["ground_truth"].append(
 
 # #### Non tracked cells
 
-# In[10]:
+# In[11]:
 
 
 cell_wout_ground_truth_df["Metadata_data_split"] = "test"
@@ -236,7 +276,7 @@ print(f"test_sc_wo_ground_truth_df shape: {cell_wout_ground_truth_df.shape[0]}")
 
 # ### Fetch the indices from each ground truth and data split and add the status back to sc_profile
 
-# In[ ]:
+# In[12]:
 
 
 # flatten each list in the dictionar
@@ -252,7 +292,7 @@ data_split_data_df = pd.DataFrame.from_dict(
 assert data_split_data_df.shape[0] == sc_profile.shape[0]
 
 
-# In[12]:
+# In[13]:
 
 
 # sort the dataframe by index
@@ -266,7 +306,7 @@ data_split_data_df.reset_index(drop=False, inplace=True)
 data_split_data_df.head()
 
 
-# In[ ]:
+# In[14]:
 
 
 # add the data_split and ground truth columns to the sc_profile dataframe by index
@@ -287,7 +327,7 @@ sc_profile_with_data_splits_df.rename(
 )
 
 
-# In[14]:
+# In[15]:
 
 
 # final breakdown of the data
@@ -332,7 +372,7 @@ assert (
 )
 
 
-# In[15]:
+# In[16]:
 
 
 print(f"train_gt shape: {train_gt.shape[0]}")
@@ -343,7 +383,7 @@ print(f"holdout_w_gt shape: {holdout_w_gt.shape[0]}")
 print(f"holdout_wo_gt shape: {holdout_wo_gt.shape[0]}")
 
 
-# In[ ]:
+# In[17]:
 
 
 # write the data splits to a parquet file
