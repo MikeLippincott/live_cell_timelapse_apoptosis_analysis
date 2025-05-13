@@ -3,6 +3,7 @@ import pathlib
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.optim as optim
 from create_optimized_model import optimized_model_create
 from parameters import Parameters
 from training import train_n_validate
@@ -65,7 +66,7 @@ def train_optimized_model(
 
     optimizer = eval(optimizer)
 
-    early_stopping_patience = 15
+    early_stopping_patience = 25
     early_stopping_counter = 0
 
     train_acc = []
@@ -88,21 +89,13 @@ def train_optimized_model(
             model,
             optimizer,
             criterion,
-            train_acc,
             train_loss,
-            valid_acc,
             valid_loss,
-            correct,
-            total,
-            correct_v,
-            total_v,
         ) = train_n_validate(
             model,
             optimizer,
             criterion,
-            train_acc,
             train_loss,
-            valid_acc,
             valid_loss,
             total_step,
             total_step_val,
@@ -119,7 +112,7 @@ def train_optimized_model(
             pathlib.Path(save_state_path).mkdir(parents=True, exist_ok=True)
             torch.save(
                 model.state_dict(),
-                f"{save_state_path}/Regression_{model_name}.pt",
+                f"{save_state_path}/{model_name}.pt",
             )
 
             print(
@@ -138,4 +131,4 @@ def train_optimized_model(
         print(
             f"\t Train_Loss: {np.mean(train_loss):.4f} Val_Loss: {np.mean(valid_loss):.4f}  BEST VAL Loss: {valid_loss_min:.4f} \n"
         )
-    return train_loss, train_acc, valid_loss, valid_acc, epochs_ran, model
+    return train_loss, valid_loss, epochs_ran, model

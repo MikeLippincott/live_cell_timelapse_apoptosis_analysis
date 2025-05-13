@@ -3,7 +3,6 @@ import optuna
 import torch
 import torch.optim as optim
 from build_custom_model import build_model_custom
-from exceptions import OptimizationMetricError
 from parameters import Parameters
 from training import train_n_validate
 
@@ -72,20 +71,16 @@ def objective_model_optimizer(
         model.parameters(), lr=optimization_params["learning_rate"]
     )
     # loss function
-
     criterion = torch.nn.MSELoss()
-    criterion = torch.nn.L1Loss()
 
     # send model to device(cuda)
     model = model.to(params.DEVICE)
     criterion = criterion.to(params.DEVICE)
 
     # train set accuracy and loss
-    train_acc = []
     train_loss = []
 
     # validation set accuracy and loss
-    valid_acc = []
     valid_loss = []
 
     # total number of data to pass through
@@ -97,21 +92,13 @@ def objective_model_optimizer(
             model,
             optimizer,
             criterion,
-            train_acc,
             train_loss,
-            valid_acc,
             valid_loss,
-            correct,
-            total,
-            correct_v,
-            total_v,
         ) = train_n_validate(
             model,
             optimizer,
             criterion,
-            train_acc,
             train_loss,
-            valid_acc,
             valid_loss,
             total_step,
             total_step_val,
@@ -126,16 +113,5 @@ def objective_model_optimizer(
         if trial.should_prune():
             raise optuna.exceptions.TrialPruned()
 
-    # I want information returned but only 1 metric required for the optimize function called by study.optimize
-    # with out this conditional statement the optimization will fail
-    if return_info == True:
-        print(f"Validation Loss: {np.mean(valid_loss)}")
-        print(f"Training Loss: {np.mean(train_loss)}")
-        return (
-            np.mean(valid_loss),
-            np.mean(train_loss),
-        )
-    elif metric == "loss":
-        return np.mean(valid_loss)
-    else:
-        raise OptimizationMetricError
+    # for hyperparameter optimization we must return a single value
+    return np.mean(valid_loss)

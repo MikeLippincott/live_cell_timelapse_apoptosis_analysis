@@ -9,9 +9,7 @@ def train_n_validate(
     model: build_model_custom,
     optimizer: str,
     criterion: torch.nn,
-    train_acc: list,
     train_loss: list,
-    valid_acc: list,
     valid_loss: list,
     total_step: int,
     total_step_val: int,
@@ -31,12 +29,8 @@ def train_n_validate(
         optimizer type
     criterion : nn
         criterion function to be used to calculate loss
-    train_acc : list
-        list for adding training accuracy values
     train_loss : list
         list for adding training loss values
-    valid_acc : list
-        list for adding validation accuracy values
     valid_loss : list
         list for adding validation loss values
     total_step : int
@@ -60,29 +54,15 @@ def train_n_validate(
             optimizer type
         criterion : nn
             criterion function to be used to calculate loss
-        train_acc : list
-            list for adding training accuracy values
         train_loss : list
             list for adding training loss values
-        valid_acc : list
-            list for adding validation accuracy values
         valid_loss : list
             list for adding validation loss values
-        correct : int
-            the number of correctly trained data points in training data
-        total : int
-            the total number of data points in the train data
-        correct_v : int
-            the number of correctly validated data points in validation data
-        total_v : int
-            the total number of correctly validated data points in validation data
     """
 
     # TRAINING
     model.train()
     running_loss = 0
-    correct = 0
-    total = 0
 
     for _, (X_train_batch, y_train_batch) in enumerate(train_loader):
 
@@ -92,16 +72,16 @@ def train_n_validate(
         optimizer.zero_grad()
         output = model(X_train_batch)
         loss = criterion(output, y_train_batch)
-        running_loss += loss.item()
         loss.backward()  # Backpropagation
         optimizer.step()  # Update model weights
         running_loss += loss.item()
 
-    train_loss.append(running_loss / total_step)  # Average loss
+    if total_step > 0:
+        train_loss.append(running_loss / total_step)  # Average loss
+    else:
+        train_loss.append(0)  # Average loss
 
     # VALIDATION
-    correct_v = 0
-    total_v = 0
     batch_loss = 0
     with torch.no_grad():
         model.eval()
@@ -113,18 +93,15 @@ def train_n_validate(
             loss = criterion(output, y_valid_batch)
             batch_loss += loss.item()
 
-    valid_loss.append(batch_loss / total_step_val)  # Average validation loss
+    if total_step_val > 0:
+        valid_loss.append(batch_loss / total_step_val)  # Average validation loss
+    else:
+        valid_loss.append(0)
 
     return (
         model,
         optimizer,
         criterion,
-        train_acc,
         train_loss,
-        valid_acc,
         valid_loss,
-        correct,
-        total,
-        correct_v,
-        total_v,
     )
