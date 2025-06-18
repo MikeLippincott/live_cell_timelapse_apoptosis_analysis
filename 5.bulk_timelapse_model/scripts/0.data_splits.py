@@ -17,7 +17,7 @@ bulk_data_file_path = pathlib.Path(
     "../../data/CP_scDINO_features/combined_CP_scDINO_norm_fs_aggregated.parquet"
 ).resolve(strict=True)
 whole_image_final_data_file_path = pathlib.Path(
-    "../../data/CP_aggregated/endpoints/aggregated_whole_image.parquet"
+    "../../data/CP_aggregated/endpoints/aggregated_profile.parquet"
 ).resolve(strict=True)
 ground_truth_file_path = pathlib.Path(
     "../../1.ground_truth/data/0.ground_truth/ground_truth.csv"
@@ -59,6 +59,18 @@ print("Whole image final data shape: ", whole_image_final_df.shape)
 # In[5]:
 
 
+bulk_df.head()
+
+
+# In[6]:
+
+
+ground_truth_df
+
+
+# In[7]:
+
+
 bulk_df = pd.merge(
     bulk_df,
     ground_truth_df[["Metadata_dose", "apoptosis"]],
@@ -68,6 +80,11 @@ bulk_df = pd.merge(
 )
 gt = bulk_df.pop("apoptosis")
 bulk_df.insert(3, "Metadata_apoptosis_ground_truth", gt)
+bulk_df.head()
+
+
+# In[8]:
+
 
 bulk_df = pd.merge(
     bulk_df,
@@ -79,7 +96,7 @@ bulk_df = pd.merge(
 bulk_df.head()
 
 
-# In[6]:
+# In[9]:
 
 
 dose_wells = bulk_df.copy()
@@ -88,7 +105,7 @@ dose_wells = dose_wells.drop_duplicates()
 dose_wells = dose_wells.reset_index(drop=True)
 
 
-# In[ ]:
+# In[10]:
 
 
 # there are 10 doses, with three wells each
@@ -106,7 +123,7 @@ train_wells = dose_wells[~dose_wells["Metadata_Well"].isin(test_wells)][
 ].tolist()
 
 
-# In[8]:
+# In[11]:
 
 
 train_df = bulk_df[bulk_df["Metadata_Well"].isin(train_wells)]
@@ -120,21 +137,40 @@ test_df_file_path = data_splits_dir / "test.parquet"
 test_df.to_parquet(test_df_file_path, index=False)
 
 
-# In[9]:
+# In[12]:
 
 
 print("Train data shape: ", train_df.shape)
 train_df.head()
 
 
-# In[10]:
+# In[13]:
+
+
+# print the wells to find which one we are missing
+print(sorted(train_df["Metadata_Well"].unique()))
+print(test_df["Metadata_Well"].unique())
+
+
+# In[14]:
+
+
+# missing C-07 add it as a test well
+if "C-07" not in test_df["Metadata_Well"].unique():
+    print("Adding C-07 as a test well")
+    c_07_df = bulk_df[bulk_df["Metadata_Well"] == "C-07"]
+    c_07_df = c_07_df.reset_index(drop=True)
+    test_df = pd.concat([test_df, c_07_df], ignore_index=True)
+
+
+# In[15]:
 
 
 print("Test data shape: ", test_df.shape)
 test_df.head()
 
 
-# In[ ]:
+# In[16]:
 
 
 # make a df with the wells used for training and testing with their respective doses
