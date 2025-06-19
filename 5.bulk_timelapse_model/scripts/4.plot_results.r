@@ -263,6 +263,8 @@ pca_over_time_plot <- (
             nrow = 2,
         )
     )
+    # spread the x axis ticks out
+    + scale_x_continuous(breaks = seq(-80, 20,by = 40))
     + theme(
         # axis tick labels
         axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
