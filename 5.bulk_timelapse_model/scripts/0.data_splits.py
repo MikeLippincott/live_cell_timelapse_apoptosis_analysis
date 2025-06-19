@@ -10,7 +10,7 @@ import pathlib
 import numpy as np
 import pandas as pd
 
-# In[2]:
+# In[ ]:
 
 
 bulk_data_file_path = pathlib.Path(

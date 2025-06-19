@@ -133,7 +133,7 @@ print(
 
 model_features = [
     "Terminal_Cytoplasm_Intensity_MaxIntensity_AnnexinV",
-    "Terminal_Cells_Intensity_MaxIntensityEdge_AnnexinV",
+    "Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV",
 ]
 
 
@@ -174,7 +174,7 @@ cv = KFold(n_splits=5, shuffle=True, random_state=0)  # 5-fold cross-validation
 # elastic net parameters
 elastic_net_params = {
     "alpha": [0.1, 1.0, 10.0, 100.0, 1000.0],  # Regularization strength
-    "l1_ratio": [0.1, 0.25, 0.5, 0.75, 0.9, 1.0],  # l1_ratio = 1.0 is Lasso
+    "l1_ratio": [0.1, 0.25, 0.5],  # l1_ratio = 1.0 is Lasso
     "max_iter": 10000,  # Increase max_iter for convergence
 }
 elastic_net_all_terminal_features_model = MultiOutputRegressor(
@@ -239,12 +239,6 @@ for train_test_key, train_test_data in tqdm.tqdm(dict_of_train_tests.items()):
 # In[7]:
 
 
-train_test_data["X"]
-
-
-# In[8]:
-
-
 # test the model
 for train_test_key, train_test_data in tqdm.tqdm(dict_of_train_tests.items()):
     if "train" in train_test_key:
@@ -278,7 +272,7 @@ for train_test_key, train_test_data in tqdm.tqdm(dict_of_train_tests.items()):
     }
 
 
-# In[9]:
+# In[8]:
 
 
 terminal_columns_file_path = results_dir / "terminal_columns.txt"
