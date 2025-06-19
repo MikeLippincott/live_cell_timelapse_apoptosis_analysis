@@ -169,6 +169,11 @@ pca1_plot <- (
     + plot_themes
     + scale_color_manual(values = color_pallete_for_dose)
     + guides(color = guide_legend( override.aes = list(size = 5, alpha = 1)))
+    + theme(
+        # axis tick labels
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+    )
+
 )
 ggsave(
     filename = "../figures/predicted_PC1.png",
@@ -193,6 +198,11 @@ pca2_plot <- (
     + plot_themes
     + scale_color_manual(values = color_pallete_for_dose)
     + guides(color = guide_legend( override.aes = list(size = 5, alpha = 1)))
+    + theme(
+        # axis tick labels
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+    )
+
 )
 ggsave(
     filename = "../figures/predicted_PC2.png",
@@ -253,6 +263,11 @@ pca_over_time_plot <- (
             nrow = 2,
         )
     )
+    + theme(
+        # axis tick labels
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+    )
+
 
 )
 ggsave(
