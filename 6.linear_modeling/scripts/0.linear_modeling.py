@@ -140,8 +140,6 @@ feature_columns = [x for x in df.columns if "Metadata" not in x]
 time_column = "Metadata_Time"
 single_cells_count_column = "Metadata_number_of_singlecells"
 dose_column = "Metadata_dose"
-interaction_column1 = "Metadata_interaction1"
-interaction_column2 = "Metadata_interaction2"
 
 # ensure that the interaction terms are both numeric
 df["Metadata_number_of_singlecells"] = pd.to_numeric(
@@ -149,8 +147,6 @@ df["Metadata_number_of_singlecells"] = pd.to_numeric(
 )
 df["Metadata_Time"] = pd.to_numeric(df["Metadata_Time"], errors="coerce")
 df["Metadata_dose"] = pd.to_numeric(df["Metadata_dose"], errors="coerce")
-df[interaction_column1] = df["Metadata_number_of_singlecells"] * df["Metadata_Time"]
-df[interaction_column2] = df["Metadata_Time"] * df["Metadata_dose"]
 
 
 # In[5]:
@@ -179,8 +175,6 @@ X = df[
         time_column,
         single_cells_count_column,
         dose_column,
-        interaction_column1,
-        interaction_column2,
     ]
 ]
 for feature in tqdm.tqdm(feature_columns):
@@ -324,24 +318,19 @@ scdino_df[["Compartment", "Feature_type", "Measurement"]] = "scDINO"
 
 final_df = pd.concat([cp_df, scdino_df], axis=0)
 final_df["Channel"] = final_df["Channel"].str.replace("Adjacent", "None")
-
+final_df["Channel"] = final_df["Channel"].str.replace("Y", "None")
 final_df["Channel"] = final_df["Channel"].str.replace("CL_488_1", "488-1")
 final_df["Channel"] = final_df["Channel"].str.replace("CL_488_2", "488-2")
 final_df["Channel"] = final_df["Channel"].str.replace("CL_561", "561")
 final_df["Channel"] = final_df["Channel"].str.replace("488-1", "CL 488-1")
 final_df["Channel"] = final_df["Channel"].str.replace("488-2", "CL 488-2")
 final_df["Channel"] = final_df["Channel"].str.replace("561", "CL 561")
-final_df["Channel"].unique()
 
 
 # In[13]:
 
 
 final_df["variate"] = final_df["variate"].str.replace("dose", "Dose")
-final_df["variate"] = final_df["variate"].str.replace(
-    "interaction1", "Time x \nCell count"
-)
-final_df["variate"] = final_df["variate"].str.replace("interaction2", "Time x \nDose")
 
 
 # In[14]:
