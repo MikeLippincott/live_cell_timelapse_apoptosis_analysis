@@ -14,12 +14,6 @@ import pycytominer
 # In[2]:
 
 
-model_file_dir = pathlib.Path(
-    "../models/multi_regression_model_ntrees_1000.joblib"
-).resolve()
-shuffled_model_file_dir = pathlib.Path(
-    "../models/shuffled_multi_regression_model_ntrees_1000.joblib"
-).resolve()
 train_test_wells_path = pathlib.Path(
     "../data_splits/train_test_wells.parquet"
 ).resolve()
@@ -64,6 +58,31 @@ aggregate_df.head()
 # In[3]:
 
 
+models_path = pathlib.Path("../models/").resolve(strict=True)
+models = pathlib.Path(models_path).glob("*.joblib")
+models_dict = {
+    "model_name": [],
+    "model_path": [],
+    "shuffled": [],
+    "feature": [],
+}
+
+for model_path in models:
+    models_dict["model_name"].append(model_path.name)
+    models_dict["model_path"].append(model_path)
+    models_dict["shuffled"].append(
+        "shuffled" if "shuffled" in model_path.name else "not_shuffled"
+    )
+    models_dict["feature"].append(
+        model_path.name.split("singlefeature")[1].strip(".joblib").strip("_")
+        if "singlefeature" in model_path.name
+        else "all_terminal_features"
+    )
+
+
+# In[4]:
+
+
 # map the train/test wells to the aggregate data
 aggregate_df["Metadata_data_split"] = aggregate_df["Metadata_Well"].map(
     data_split_df.set_index("Metadata_Well")["data_split"]
@@ -71,19 +90,16 @@ aggregate_df["Metadata_data_split"] = aggregate_df["Metadata_Well"].map(
 data_split = aggregate_df.pop("Metadata_data_split")
 aggregate_df.insert(0, "Metadata_data_split", data_split)
 aggregate_df["Metadata_Time"] = aggregate_df["Metadata_Time"].astype(float)
+# drop NaN values in the terminal columns
+aggregate_df = aggregate_df.dropna(subset="Metadata_data_split")
 aggregate_df["Metadata_data_split"].unique()
-
-
-# In[4]:
-
-
-aggregate_df.head(15)
 
 
 # In[5]:
 
 
 # if the data_split is train and the time is not 12 then set to non_trained_pair
+# where 12 is the last time point
 aggregate_df["Metadata_data_split"] = aggregate_df.apply(
     lambda x: (
         "non_trained_pair"
@@ -97,50 +113,51 @@ aggregate_df["Metadata_data_split"] = aggregate_df.apply(
 # In[6]:
 
 
-# load the model
-model = joblib.load(model_file_dir)
-
-metadata_columns = [x for x in aggregate_df.columns if "Metadata_" in x]
-# remove metadata columns
-features = aggregate_df.drop(columns=metadata_columns)
-metadata_df = aggregate_df[metadata_columns]
-# predict the terminal feature space
-predictions = model.predict(features)
-predictions_df = pd.DataFrame(predictions, columns=terminal_column_names)
-# insert the metadata columns
-for col in metadata_columns:
-    predictions_df.insert(0, col, metadata_df[col])
-predictions_df["shuffled"] = False
+metadata_columns = [x for x in aggregate_df.columns if "metadata" in x.lower()]
+aggregate_features_df = aggregate_df.drop(columns=metadata_columns, errors="ignore")
 
 
 # In[7]:
 
 
-# load the model
-shuffled_model = joblib.load(shuffled_model_file_dir)
+results_dict = {}
+for i, model_name in enumerate(models_dict["feature"]):
+    model = joblib.load(models_dict["model_path"][i])
+    if models_dict["feature"][i] != "all_terminal_features":
+        print(models_dict["feature"][i])
+        predicted_df = pd.DataFrame(
+            model.predict(aggregate_features_df),
+            columns=[models_dict["feature"][i]],
+        )
+    else:
+        print("all_terminal_features")
+        predicted_df = pd.DataFrame(
+            model.predict(aggregate_features_df),
+            columns=terminal_column_names,
+        )
+    predicted_df[metadata_columns] = aggregate_df[metadata_columns]
+    predicted_df["shuffled"] = models_dict["shuffled"][i]
+    # drop nan value
+    predicted_df = predicted_df.dropna()
 
-metadata_columns = [x for x in aggregate_df.columns if "Metadata_" in x]
-shuffled_profile_df = aggregate_df.copy()
-for col in shuffled_profile_df.columns:
-    shuffled_profile_df[col] = np.random.permutation(shuffled_profile_df[col])
-# remove metadata columns
-features = shuffled_profile_df.drop(columns=metadata_columns)
-metadata_df = aggregate_df[metadata_columns]
+    # check if a key for the feature already exists in results_dict
+    if f"{models_dict['feature'][i]}" in results_dict:
+        temporary_df = pd.concat(
+            [results_dict[f"{models_dict['feature'][i]}"], predicted_df],
+            ignore_index=True,
+            sort=False,
+        )
+        results_dict[f"{models_dict['feature'][i]}"] = temporary_df
+    else:
+        results_dict[f"{models_dict['feature'][i]}"] = predicted_df
 
-
-# predict the terminal feature space
-predictions = shuffled_model.predict(features)
-shuffled_predictions_df = pd.DataFrame(predictions, columns=terminal_column_names)
-# insert the metadata columns
-for col in metadata_columns:
-    shuffled_predictions_df.insert(0, col, metadata_df[col])
-shuffled_predictions_df["shuffled"] = True
+    print(results_dict[f"{models_dict['feature'][i]}"].shape)
 
 
 # In[8]:
 
 
-final_predictions_df = pd.concat([predictions_df, shuffled_predictions_df], axis=0)
-# save the predictions
-final_predictions_df.to_parquet(predictions_save_path, index=False)
-final_predictions_df.head()
+for model in results_dict.keys():
+    save_path = pathlib.Path(f"../results/{model}.parquet").resolve()
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    results_dict[model].to_parquet(save_path, index=False)

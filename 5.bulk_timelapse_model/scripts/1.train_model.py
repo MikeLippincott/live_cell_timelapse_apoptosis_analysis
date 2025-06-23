@@ -5,14 +5,17 @@
 
 
 import pathlib
+import warnings
 from typing import Tuple
 
 import joblib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import tqdm
 from sklearn.decomposition import PCA
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.exceptions import ConvergenceWarning
+from sklearn.linear_model import ElasticNetCV
 from sklearn.metrics import (
     explained_variance_score,
     mean_absolute_error,
@@ -43,7 +46,9 @@ train_df.head()
 
 
 metadata_columns = [x for x in train_df.columns if "Metadata" in x]
-terminal_columns = [x for x in train_df.columns if "Terminal" in x]
+terminal_columns = [
+    x for x in train_df.columns if "Terminal" in x and "Metadata" not in x
+]
 
 
 def shuffle_data(df: pd.DataFrame) -> pd.DataFrame:
@@ -126,177 +131,150 @@ print(
 # In[4]:
 
 
+model_features = [
+    "Terminal_Cytoplasm_Intensity_MaxIntensity_AnnexinV",
+    "Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV",
+]
+
+
+# In[5]:
+
+
 dict_of_train_tests = {
     "train": {
         "X": train_X,
         "y": train_y,
         "metadata": train_metadata,
-        "model_path": [],
-        "n_estimators": [],
     },
     "train_shuffled": {
         "X": train_shuffled_X,
         "y": train_shuffled_y,
         "metadata": train_metadata_shuffled,
-        "model_path": [],
-        "n_estimators": [],
     },
     "test": {
         "X": test_X,
         "y": test_y,
         "metadata": test_metadata,
-        "model_path": [],
-        "n_estimators": [],
     },
     "test_shuffled": {
         "X": test_shuffled_X,
         "y": test_shuffled_y,
         "metadata": test_metadata_shuffled,
-        "model_path": [],
-        "n_estimators": [],
     },
 }
 
 
 # ## Model training
 
-# In[5]:
-
-
-# set the number of trees in the forest to search for the best number of trees
-n_trees_list = [10, 100, 1000]
-
-
 # In[6]:
 
 
 # Define cross-validation strategy
 cv = KFold(n_splits=5, shuffle=True, random_state=0)  # 5-fold cross-validation
+# elastic net parameters
+elastic_net_params = {
+    "alpha": [0.1, 1.0, 10.0, 100.0, 1000.0],  # Regularization strength
+    "l1_ratio": [0.1, 0.25, 0.5],  # l1_ratio = 1.0 is Lasso
+    "max_iter": 10000,  # Increase max_iter for convergence
+}
+elastic_net_all_terminal_features_model = MultiOutputRegressor(
+    ElasticNetCV(
+        alphas=elastic_net_params["alpha"],
+        l1_ratio=elastic_net_params["l1_ratio"],
+        cv=cv,
+        random_state=0,
+        max_iter=elastic_net_params["max_iter"],
+    )
+)
 
-for n_trees in n_trees_list:
-    # Initialize the multi-output regression model
-    model = MultiOutputRegressor(
-        RandomForestRegressor(
-            n_estimators=n_trees,
-            random_state=0,
+elastic_net_single_terminal_features_model = ElasticNetCV(
+    alphas=elastic_net_params["alpha"],
+    l1_ratio=elastic_net_params["l1_ratio"],
+    cv=cv,
+    random_state=0,
+    max_iter=elastic_net_params["max_iter"],
+)
+
+# train the model
+for train_test_key, train_test_data in tqdm.tqdm(dict_of_train_tests.items()):
+    if "test" in train_test_key:
+        print(f"Skipping {train_test_key} as it is a test set.")
+        continue
+    X = train_test_data["X"]
+    y = train_test_data["y"]
+    metadata = train_test_data["metadata"]
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=ConvergenceWarning)
+        elastic_net_all_terminal_features_model.fit(X, y)
+
+    # save the model
+    model_path = (
+        model_dir / f"{train_test_key}_elastic_net_model_all_terminal_features.joblib"
+    )
+    joblib.dump(elastic_net_all_terminal_features_model, model_path)
+    dict_of_train_tests[train_test_key]["model_path"] = model_path
+
+    for single_feature in model_features:
+        # Fit the model with a single terminal feature
+        y_single_feature = y[[single_feature]]
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=ConvergenceWarning)
+            elastic_net_single_terminal_features_model.fit(X, y_single_feature)
+
+        # Save the model
+        single_feature_model_path = (
+            model_dir
+            / f"{train_test_key}_elastic_net_model_singlefeature_{single_feature}.joblib"
         )
-    )
-
-    # Perform cross-validation
-    cv_scores = cross_val_score(
-        model, train_X, train_y, cv=cv, scoring="r2"
-    )  # Using R^2 as the scoring metric
-    print(
-        f"Mean cross-validation scores for n_trees={n_trees}:  {np.mean(cv_scores):.4f}"
-    )
-
-    # Train the model on the full training set
-    model.fit(train_X, train_y)
-
-    # Save the trained model
-    model_file_path = pathlib.Path(
-        f"../models/multi_regression_model_ntrees_{n_trees}.joblib"
-    ).resolve()
-    joblib.dump(model, model_file_path)
-    dict_of_train_tests["train"]["model_path"].append(model_file_path)
-    dict_of_train_tests["test"]["model_path"].append(model_file_path)
-    dict_of_train_tests["train"]["n_estimators"].append(n_trees)
-    dict_of_train_tests["test"]["n_estimators"].append(n_trees)
-
-    # Repeat for shuffled data
-    shuffled_model = MultiOutputRegressor(
-        RandomForestRegressor(
-            n_estimators=n_trees,
-            random_state=0,
-            n_jobs=-1,
+        joblib.dump(
+            elastic_net_single_terminal_features_model, single_feature_model_path
         )
-    )
+        dict_of_train_tests[train_test_key][
+            f"model_path_{single_feature}"
+        ] = single_feature_model_path
 
-    # Perform cross-validation on shuffled data
-    shuffled_cv_scores = cross_val_score(
-        shuffled_model, train_shuffled_X, train_shuffled_y, cv=cv, scoring="r2"
-    )
-    print(
-        f"Mean cross-validation scores for shuffled data with n_trees={n_trees}: {np.mean(shuffled_cv_scores):.4f}"
-    )
-
-    # Train the shuffled model on the full shuffled training set
-    shuffled_model.fit(train_shuffled_X, train_shuffled_y)
-
-    # Save the shuffled model
-    shuffled_model_file_path = pathlib.Path(
-        f"../models/shuffled_multi_regression_model_ntrees_{n_trees}.joblib"
-    ).resolve()
-    joblib.dump(shuffled_model, shuffled_model_file_path)
-    dict_of_train_tests["train_shuffled"]["model_path"].append(shuffled_model_file_path)
-    dict_of_train_tests["test_shuffled"]["model_path"].append(shuffled_model_file_path)
-    dict_of_train_tests["train_shuffled"]["n_estimators"].append(n_trees)
-    dict_of_train_tests["test_shuffled"]["n_estimators"].append(n_trees)
-
-
-# ## Model Evaluation
 
 # In[7]:
 
 
-output_dict_of_dfs = {"prediction_stats_df": [], "predictions_df": []}
-for split in dict_of_train_tests.keys():
-    if "shuffle" in split:
-        shuffle = True
+# test the model
+for train_test_key, train_test_data in tqdm.tqdm(dict_of_train_tests.items()):
+    if "train" in train_test_key:
+        print(f"Skipping {train_test_key} as it is a training set.")
+        continue
+    X = train_test_data["X"]
+    y = train_test_data["y"]
+    metadata = train_test_data["metadata"]
+    if "shuffled" in train_test_key:
+        model_path = dict_of_train_tests["train_shuffled"]["model_path"]
     else:
-        shuffle = False
-    X = dict_of_train_tests[split]["X"]
-    y = dict_of_train_tests[split]["y"]
-    metadata = dict_of_train_tests[split]["metadata"]
-    for n_tree_model in enumerate(dict_of_train_tests[split]["model_path"]):
-        model = joblib.load(dict_of_train_tests[split]["model_path"][n_tree_model[0]])
+        model_path = dict_of_train_tests["train"]["model_path"]
 
-        n_estimators = dict_of_train_tests[split]["n_estimators"][n_tree_model[0]]
+    # load the model
+    model = joblib.load(model_path)
 
-        # make predictions on the training data
-        y_pred = model.predict(X)
-        # calculate the mean absolute error
-        mae = mean_absolute_error(y, y_pred)
-        # calculate the mse
-        mse = mean_squared_error(y, y_pred)
-        # calculate the r2 score
-        r2 = r2_score(y, y_pred)
-        # calculate the explained variance score
-        evs = explained_variance_score(y, y_pred)
+    # make predictions
+    y_pred = model.predict(X)
 
-        prediction_stats_df = pd.DataFrame(
-            {"MAE": [mae], "MSE": [mse], "R2": [r2], "EVS": [evs]}
-        )
+    alphas = model.estimators_[0].alpha_
+    l1_ratios = model.estimators_[0].l1_ratio_
+    print(f"Model parameters for {train_test_key}:")
+    print(f"Alphas: {alphas}, L1 Ratios: {l1_ratios}")
 
-        prediction_stats_df["data_split"] = split
-        prediction_stats_df["shuffled"] = shuffle
-        prediction_stats_df["n_estimators"] = n_estimators
-        output_dict_of_dfs["prediction_stats_df"].append(prediction_stats_df)
-
-        predictions_df = pd.DataFrame(y_pred, columns=terminal_columns)
-        predictions_df.insert(0, "Metadata_data_split", split)
-        predictions_df.insert(1, "Metadata_shuffled", shuffle)
-        # add the metadata columns to the predictions_df
-        for col in metadata.columns:
-            predictions_df.insert(2, col, metadata[col])
-        output_dict_of_dfs["predictions_df"].append(predictions_df)
-
-
-prediction_stats_df = pd.concat(output_dict_of_dfs["prediction_stats_df"], axis=0)
-predictions_df = pd.concat(output_dict_of_dfs["predictions_df"], axis=0)
-print(prediction_stats_df.shape)
-print(predictions_df.shape)
+    # calculate metrics
+    metrics = {
+        "explained_variance": explained_variance_score(y, y_pred),
+        "mean_absolute_error": mean_absolute_error(y, y_pred),
+        "mean_squared_error": mean_squared_error(y, y_pred),
+        "r2_score": r2_score(y, y_pred),
+    }
 
 
 # In[8]:
 
 
-# save the final training results
-prediction_stats_df_file_path = results_dir / "prediction_stats_df.parquet"
-prediction_stats_df.to_parquet(prediction_stats_df_file_path, index=False)
-predictions_df_file_path = results_dir / "predictions_df_final_timepoint.parquet"
-predictions_df.to_parquet(predictions_df_file_path, index=False)
-# write the terminal column names to a file
 terminal_columns_file_path = results_dir / "terminal_columns.txt"
 with open(terminal_columns_file_path, "w") as f:
     for col in terminal_columns:

@@ -7,22 +7,63 @@
 import pathlib
 
 import joblib
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 # In[2]:
 
 
+def model_stats_grab(
+    predicted_df: pd.DataFrame,
+    actual_df: pd.DataFrame,
+) -> tuple:
+    """
+    Calculate model statistics such as Mean Squared Error (MSE), Mean Absolute Error (MAE), and R-squared (R2) from predicted and actual values.
+
+        Parameters
+        ----------
+        predicted_df : pd.DataFrame
+            DataFrame containing the predicted values.
+        actual_df : pd.DataFrame
+            DataFrame containing the actual values.
+
+        Returns
+        -------
+        tuple
+        mse : float
+            Mean Squared Error between predicted and actual values.
+        mae : float
+            Mean Absolute Error between predicted and actual values.
+        r2 : float
+            R-squared value indicating the proportion of variance explained by the model.
+    """
+
+    assert (
+        predicted_df.shape == actual_df.shape
+    ), "Predicted and actual DataFrames must have the same shape."
+    # if predicted_df.isinstance(pd.DataFrame):
+    #     predicted = predicted_df.values
+    # if isinstance(predicted_df, pd.Series):
+    #     actual = actual_df.values
+
+    mse = mean_squared_error(actual_df, predicted_df)
+    mae = mean_absolute_error(actual_df, predicted_df)
+    r2 = r2_score(actual_df, predicted_df)
+
+    return mse, mae, r2
+
+
+# In[3]:
+
+
 # load the training data
-profile_file_dir = pathlib.Path(
-    "../../data/CP_scDINO_features/combined_CP_scDINO_norm_fs_aggregated.parquet"
-).resolve(strict=True)
-model_file_dir = pathlib.Path("../models/multi_regression_model.joblib").resolve(
-    strict=True
-)
-shuffled_model_file_dir = pathlib.Path(
-    "../models/shuffled_multi_regression_model.joblib"
-).resolve(strict=True)
+profile_file_dir = pathlib.Path("../data_splits/test.parquet").resolve(strict=True)
+
+models_path = pathlib.Path("../models").resolve(strict=True)
+
 terminal_column_names = pathlib.Path("../results/terminal_columns.txt").resolve(
     strict=True
 )
@@ -34,63 +75,110 @@ terminal_column_names = [
 ]
 results_dir = pathlib.Path("../results/").resolve()
 results_dir.mkdir(parents=True, exist_ok=True)
+
 profile_df = pd.read_parquet(profile_file_dir)
 print(profile_df.shape)
 profile_df.head()
 
 
-# ## Get the non-shuffled predictions
-
-# In[3]:
-
-
-# load the model
-model = joblib.load(model_file_dir)
-shuffled_model = joblib.load(shuffled_model_file_dir)
-
-metadata_columns = [x for x in profile_df.columns if "Metadata_" in x]
-# remove metadata columns
-features = profile_df.drop(columns=metadata_columns)
-metadata_df = profile_df[metadata_columns]
-# predict the terminal feature space
-predictions = model.predict(features)
-predictions_df = pd.DataFrame(predictions, columns=terminal_column_names)
-# insert the metadata columns
-for col in metadata_columns:
-    predictions_df.insert(0, col, metadata_df[col])
-predictions_df["shuffled"] = False
-
-
-# ## Get the shuffled predictions
-
 # In[4]:
 
 
-# load the model
-shuffled_model = joblib.load(shuffled_model_file_dir)
-
-metadata_columns = [x for x in profile_df.columns if "Metadata_" in x]
-shuffled_profile_df = profile_df.copy()
-for col in shuffled_profile_df.columns:
-    shuffled_profile_df[col] = np.random.permutation(shuffled_profile_df[col])
-# remove metadata columns
-features = shuffled_profile_df.drop(columns=metadata_columns)
-metadata_df = profile_df[metadata_columns]
+terminal_df = profile_df[terminal_column_names]
+profile_df = profile_df.drop(columns=terminal_column_names)
 
 
-# predict the terminal feature space
-predictions = shuffled_model.predict(features)
-shuffled_predictions_df = pd.DataFrame(predictions, columns=terminal_column_names)
-# insert the metadata columns
-for col in metadata_columns:
-    shuffled_predictions_df.insert(0, col, metadata_df[col])
-shuffled_predictions_df["shuffled"] = True
+# In[ ]:
 
 
-# In[5]:
+models = pathlib.Path(models_path).glob("*.joblib")
+models_dict = {
+    "model_name": [],
+    "model_path": [],
+    "shuffled": [],
+    "feature": [],
+}
+
+for model_path in models:
+    print(model_path.name)
+    models_dict["model_name"].append(model_path.name)
+    models_dict["model_path"].append(model_path)
+    models_dict["shuffled"].append(
+        "shuffled" if "shuffled" in model_path.name else "not_shuffled"
+    )
+    models_dict["feature"].append(
+        model_path.name.split("singlefeature")[1].strip(".joblib").strip("_")
+        if "singlefeature" in model_path.name
+        else "all_terminal_features"
+    )
 
 
-final_predictions_df = pd.concat([predictions_df, shuffled_predictions_df], axis=0)
-# save the predictions
-final_predictions_df.to_parquet(predictions_save_path, index=False)
-final_predictions_df
+# In[6]:
+
+
+results_dict = {
+    "model_name": [],
+    "shuffled": [],
+    "feature": [],
+    "mse": [],
+    "mae": [],
+    "r2": [],
+}
+
+
+# In[7]:
+
+
+metadata_columns = [x for x in profile_df.columns if "metadata" in x.lower()]
+features_df = profile_df.drop(columns=metadata_columns, errors="ignore")
+
+
+# In[8]:
+
+
+for i, model_name in enumerate(models_dict["model_name"]):
+    print(f"Processing model {i + 1}/{len(models_dict['model_name'])}: {model_name}")
+    model = joblib.load(models_dict["model_path"][i])
+    if models_dict["feature"][i] != "all_terminal_features":
+        predictions = model.predict(features_df)
+        mse, mae, r2 = model_stats_grab(
+            predictions, terminal_df[models_dict["feature"][i]]
+        )
+        results_dict["shuffled"].append(models_dict["shuffled"][i])
+        results_dict["feature"].append(models_dict["feature"][i])
+    else:
+        predictions = model.predict(features_df)
+        mse, mae, r2 = model_stats_grab(predictions, terminal_df)
+        results_dict["shuffled"].append(models_dict["shuffled"][i])
+        results_dict["feature"].append("all_terminal_features")
+
+    results_dict["model_name"].append(model_name)
+    results_dict["mse"].append(mse)
+    results_dict["mae"].append(mae)
+    results_dict["r2"].append(r2)
+results_df = pd.DataFrame(results_dict)
+results_df.to_parquet(predictions_save_path, index=False)
+results_df.head(8)
+
+
+# In[9]:
+
+
+# plot the performance of the models
+
+sns.set(style="whitegrid")
+plt.figure(figsize=(12, 6))
+sns.barplot(x="feature", y="mse", hue="shuffled", data=results_df, palette="viridis")
+plt.xticks(rotation=45, ha="right")
+plt.title("Model Performance: Mean Squared Error (MSE)")
+plt.tight_layout()
+plt.figure(figsize=(12, 6))
+sns.barplot(x="feature", y="mae", hue="shuffled", data=results_df, palette="viridis")
+plt.xticks(rotation=45, ha="right")
+plt.title("Model Performance: Mean Absolute Error (MAE)")
+plt.tight_layout()
+plt.figure(figsize=(12, 6))
+sns.barplot(x="feature", y="r2", hue="shuffled", data=results_df, palette="viridis")
+plt.xticks(rotation=45, ha="right")
+plt.title("Model Performance: R-squared (R2)")
+plt.tight_layout()

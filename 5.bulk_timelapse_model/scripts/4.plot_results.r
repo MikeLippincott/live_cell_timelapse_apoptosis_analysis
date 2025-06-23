@@ -1,4 +1,4 @@
-for (pkg in c("ggplot2", "dplyr")) {
+for (pkg in c("ggplot2", "dplyr", "patchwork")) {
     suppressPackageStartupMessages(
         suppressWarnings(
             library(
@@ -40,10 +40,10 @@ plot_themes <- (
 
 )
 
-actual_results_file_path <- file.path("../../data/CP_aggregated/endpoints/aggregated_whole_image.parquet")
+actual_results_file_path <- file.path("../../data/CP_aggregated/endpoints/aggregated_profile.parquet")
 actual_results <- arrow::read_parquet(actual_results_file_path)
 actual_results$Metadata_Time <- 13
-actual_results$shuffled <- "FALSE"
+actual_results$shuffled <- "not_shuffled"
 
 # prepend Terminal to each non metadata column name
 actual_results <- actual_results %>%
@@ -53,21 +53,20 @@ columns_to_keep <- colnames(actual_results)
 
 
 
-results_file_path <- file.path("../results/predicted_terminal_profiles_from_all_time_points.parquet")
+results_file_path <- file.path("../results/all_terminal_features.parquet")
 results <- arrow::read_parquet(results_file_path)
 
 subset_results <- results[, colnames(results) %in% columns_to_keep]
 
 
-dim(actual_results)
-dim(subset_results)
+# drop the singlecells, compound, and control columns
+actual_results <- actual_results %>%
+  select(-c(Terminal_Metadata_number_of_singlecells, Terminal_Metadata_plate, Terminal_Metadata_compound, Terminal_Metadata_control))
 
 
 # merge the two dataframes on the columns "Metadata_Time" and "Metadata_dose" Metadata_Well
-merged_results <- rbind(actual_results, subset_results)
+merged_results <- rbind(subset_results,actual_results )
 merged_results$Metadata_Time <- as.numeric(merged_results$Metadata_Time) * 30
-merged_results$shuffled <- gsub("TRUE", "Shuffled", merged_results$shuffled)
-merged_results$shuffled <- gsub("FALSE", "Not shuffled", merged_results$shuffled)
 merged_results$Metadata_dose <- as.numeric(merged_results$Metadata_dose)
 merged_results$Metadata_dose <- factor(
     merged_results$Metadata_dose,
@@ -86,26 +85,56 @@ merged_results$Metadata_dose <- factor(
 )
 
 
+merged_results <- merged_results %>%
+    arrange(Metadata_Well, Metadata_Time)
+
 
 # map the train_test to the merged data
 train_test_df <- results %>%
   select(Metadata_Well, Metadata_data_split) %>%
   distinct() %>%
   mutate(Metadata_data_split = gsub("train", "Train", Metadata_data_split)) %>%
-  mutate(Metadata_data_split = gsub("test", "Test", Metadata_data_split)) %>%
-  mutate(Metadata_data_split = gsub("validation", "Validation", Metadata_data_split))
+  mutate(Metadata_data_split = gsub("test", "Test", Metadata_data_split))
 # map the data split by well to the merged data
+
+train_test_df <- train_test_df %>% distinct(Metadata_Well, .keep_all = TRUE)
+# drop na
+train_test_df <- train_test_df %>%
+  filter(!is.na(Metadata_Well)) %>%
+  filter(!is.na(Metadata_data_split))
+# join the train_test_df to the merged_results on the Metadata_Well column
 merged_results <- merged_results %>%
-  left_join(train_test_df, by = c("Metadata_Well"))
+  left_join(train_test_df, by = "Metadata_Well")
+
+
 merged_results$Metadata_data_split <- gsub("non_Trained_pair", "Train", merged_results$Metadata_data_split)
+merged_results$shuffled <- gsub("shuffled", "Shuffled", merged_results$shuffled)
+merged_results$shuffled <- gsub("not_Shuffled", "Not shuffled", merged_results$shuffled)
+
+
+# drop na
+merged_results <- merged_results %>%
+  filter(!is.na(Metadata_data_split)) %>%
+  filter(!is.na(Metadata_Well)) %>%
+  filter(!is.na(Metadata_Time)) %>%
+  filter(!is.na(Metadata_dose))
+
+
+
+merged_results <- merged_results %>% arrange(Metadata_Well, Metadata_Time)
 
 
 # get the pca of the results
 metadata_columns <- c("Metadata_Time", "Metadata_dose", "Metadata_Well", "shuffled", "Metadata_data_split")
 # drop the metadata columns from the dataframe
 pcadf <- merged_results[, !colnames(merged_results) %in% metadata_columns]
+pcadf <- pcadf[, sapply(pcadf, is.numeric)]  # keep only numeric columns
+pcadf <- pcadf[, apply(pcadf, 2, function(x) var(x, na.rm = TRUE) != 0)]
 
-pca <- prcomp(pcadf, center = TRUE, scale. = TRUE)
+head(pcadf)
+
+
+pca <- prcomp(pcadf, center = TRUE, rank. = 2, scale. = TRUE)
 # get the pca of the results
 pca_df <- data.frame(pca$x)
 pca_df$Metadata_Time <- merged_results$Metadata_Time
@@ -120,7 +149,8 @@ pca_df$PC1 <- as.numeric(pca_df$PC1)
 pca_df <- pca_df %>%
   mutate(Group = Metadata_Well) %>%
   arrange(Metadata_Well, Metadata_Time)
-pca_df <- pca_df %>% arrange(Group)
+pca_df <- pca_df %>%
+  arrange(Metadata_Well, Metadata_Time)
 head(pca_df)
 
 width <- 10
@@ -137,6 +167,11 @@ pca1_plot <- (
     + plot_themes
     + scale_color_manual(values = color_pallete_for_dose)
     + guides(color = guide_legend( override.aes = list(size = 5, alpha = 1)))
+    + theme(
+        # axis tick labels
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+    )
+
 )
 ggsave(
     filename = "../figures/predicted_PC1.png",
@@ -161,6 +196,11 @@ pca2_plot <- (
     + plot_themes
     + scale_color_manual(values = color_pallete_for_dose)
     + guides(color = guide_legend( override.aes = list(size = 5, alpha = 1)))
+    + theme(
+        # axis tick labels
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+    )
+
 )
 ggsave(
     filename = "../figures/predicted_PC2.png",
@@ -193,7 +233,6 @@ pca_df$Metadata_Time <- factor(
         '390 min.'
     )
 )
-unique(pca_df$Metadata_Time)
 
 # plot PCA1 vs PCA2 over time
 width <- 15
@@ -207,7 +246,7 @@ pca_over_time_plot <- (
     + labs(x="PC1", y="PC2", color="Dose (nM)")
     + plot_themes
     + scale_color_manual(values = color_pallete_for_dose)
-    + scale_shape_manual(values = c(16, 17,15,6), name = "Shuffle + data split")
+    + scale_shape_manual(values = c(16, 17, 1, 2), name = "Shuffle + data split")
 
     + guides(
         color = guide_legend(
@@ -222,6 +261,13 @@ pca_over_time_plot <- (
             nrow = 2,
         )
     )
+    # spread the x axis ticks out
+    + scale_x_continuous(breaks = seq(-80, 20,by = 40))
+    + theme(
+        # axis tick labels
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+    )
+
 
 )
 ggsave(
@@ -234,17 +280,96 @@ ggsave(
 pca_over_time_plot
 
 
-# merged_results$Metadata_dose <- gsub('0', '0.0', merged_results$Metadata_dose)
-unique(merged_results$Metadata_dose)
 merged_results <- merged_results %>%
   mutate(Group = Metadata_Well) %>%
   arrange(Metadata_Well, Metadata_Time)
 merged_results <- merged_results %>% arrange(Group)
 head(merged_results)
 
+# single feature predictions
+Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV_path <- file.path(
+    "../results/Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV.parquet"
+)
+
+Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV <- arrow::read_parquet(Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV_path)
+
+
+metadata_columns <- c("Metadata_Time", "Metadata_dose", "Metadata_Well", "shuffled", "Metadata_data_split")
+
+subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV <- subset_results[, colnames(subset_results) %in% c("Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV", metadata_columns)]
+Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV <- actual_results[, colnames(actual_results) %in% c("Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV", metadata_columns)]
+
+
+
+# merge the two dataframes on the columns "Metadata_Time" and "Metadata_dose" Metadata_Well
+subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV <- rbind(
+    subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV,
+    Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV
+    )
+
+
+
+
+subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV$Metadata_dose <- as.numeric(subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV$Metadata_dose)
+subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV$Metadata_dose <- factor(
+    subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV$Metadata_dose,
+    levels = c(
+        '0',
+        '0.61',
+        '1.22',
+        '2.44',
+        '4.88',
+        '9.77',
+        '19.53',
+        '39.06',
+        '78.13',
+        '156.25'
+    )
+)
+
+
+head(subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV)
+
+# merged_results$Metadata_dose <- gsub('0', '0.0', merged_results$Metadata_dose)
+unique(subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV$Metadata_dose)
+subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV <- subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV %>%
+  mutate(Group = Metadata_Well) %>%
+  arrange(Metadata_Well, Metadata_Time)
+
+
+
+subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV <- subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV %>% arrange(Group)
+subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV$Metadata_Time <- as.numeric(subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV$Metadata_Time) * 30
+
+
+
+# add the data split
+subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV <- subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV %>%
+  left_join(train_test_df, by = "Metadata_Well")
+
+
+subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV <- subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV %>%
+  mutate(Metadata_data_split = gsub("non_trained_pair", "train", Metadata_data_split))
+
+# change the dose to a factor
+subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV$Metadata_dose <- as.factor(subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV$Metadata_dose)
+
+# drop na in the data split column
+subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV <- subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV %>%
+  filter(!is.na(Metadata_data_split)) %>%
+  filter(!is.na(Metadata_Well)) %>%
+  filter(!is.na(Metadata_Time)) %>%
+  filter(!is.na(Metadata_dose))
+
+subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV$Metadata_data_split <- gsub("non_Trained_pair", "Train", subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV$Metadata_data_split)
+subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV$shuffled <- gsub("shuffled", "Shuffled", subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV$shuffled)
+
+subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV$shuffled <- gsub("not_Shuffled", "Not shuffled", subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV$shuffled)
+
+
 # plot the pca
-feature_plot <- (
-    ggplot(merged_results, aes(x = Metadata_Time, y = Terminal_Intensity_MeanIntensity_AnnexinV, color = Metadata_dose, group = Group))
+Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV_plot <- (
+    ggplot(subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV, aes(x = Metadata_Time, y = Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV, color = Metadata_dose, group = Group))
     + geom_line(aes(group = Group), alpha = 0.5, size = 2)
     + theme_minimal()
     + facet_grid(Metadata_data_split ~ shuffled)
@@ -252,18 +377,51 @@ feature_plot <- (
     + geom_vline(xintercept = (30*12), linetype = "dashed", color = "black", size = 1)
     + geom_hline(yintercept = 0, linetype = "dashed", color = "black", size = 1)
 
-    + labs(x="Time (minutes)", y="Mean Intensity \nof AnnexinV", color="Dose (nM)")
+    + labs(x="Time (minutes)", y="AnnexinV Integrated Intensity\nin the Cytoplasm", color="Dose (nM)")
     + plot_themes
     + scale_color_manual(values = color_pallete_for_dose)
     + guides(color = guide_legend( override.aes = list(size = 5, alpha = 1)))
+    + theme(
+        # axis tick labels
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+    )
 
 
 )
 ggsave(
-    filename = "../figures/predicted_Terminal_Intensity_MeanIntensity_AnnexinV.png",
-    plot = feature_plot,
+    filename = "../figures/AnnexinV_Integrated_Intensity_in_the_Cytoplasm.png",
+    plot = Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV_plot,
     width = width,
     height = height,
     dpi = 600
 )
-feature_plot
+Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV_plot
+
+Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV_plot <- Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV_plot + theme(legend.position = "none")
+pca1_plot <- pca1_plot + theme(legend.position = "none")
+
+layout <- "
+AABB
+CCCC
+"
+height <- 15
+width <- 15
+options(repr.plot.width=width, repr.plot.height=height)
+final_plot <- (
+    Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV_plot
+    + pca1_plot
+    + pca_over_time_plot
+    + plot_layout(design = layout)
+    + plot_annotation(
+        title = "PCA of predicted terminal profiles from all time points",
+        theme = theme(plot.title = element_text(size = 30, hjust = 0.5))
+    )
+)
+ggsave(
+    filename = "../figures/final_predicted_terminal_profiles_from_all_time_points.png",
+    plot = final_plot,
+    width = width,
+    height = height,
+    dpi = 600
+)
+final_plot
