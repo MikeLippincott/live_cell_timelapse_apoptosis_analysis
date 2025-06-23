@@ -67,8 +67,6 @@ actual_results <- actual_results %>%
 # merge the two dataframes on the columns "Metadata_Time" and "Metadata_dose" Metadata_Well
 merged_results <- rbind(subset_results,actual_results )
 merged_results$Metadata_Time <- as.numeric(merged_results$Metadata_Time) * 30
-# merged_results$shuffled <- gsub("TRUE", "Shuffled", merged_results$shuffled)
-# merged_results$shuffled <- gsub("FALSE", "Not shuffled", merged_results$shuffled)
 merged_results$Metadata_dose <- as.numeric(merged_results$Metadata_dose)
 merged_results$Metadata_dose <- factor(
     merged_results$Metadata_dose,

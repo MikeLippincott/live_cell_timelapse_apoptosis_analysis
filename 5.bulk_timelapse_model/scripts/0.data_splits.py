@@ -10,7 +10,7 @@ import pathlib
 import numpy as np
 import pandas as pd
 
-# In[ ]:
+# In[2]:
 
 
 bulk_data_file_path = pathlib.Path(
@@ -147,30 +147,15 @@ train_df.head()
 # In[13]:
 
 
-# print the wells to find which one we are missing
-print(sorted(train_df["Metadata_Well"].unique()))
-print(test_df["Metadata_Well"].unique())
-
-
-# In[14]:
-
-
 # missing C-07 add it as a test well
 if "C-07" not in test_df["Metadata_Well"].unique():
-    print("Adding C-07 as a test well")
     c_07_df = bulk_df[bulk_df["Metadata_Well"] == "C-07"]
     c_07_df = c_07_df.reset_index(drop=True)
     test_df = pd.concat([test_df, c_07_df], ignore_index=True)
-
-
-# In[15]:
-
-
 print("Test data shape: ", test_df.shape)
-test_df.head()
 
 
-# In[16]:
+# In[14]:
 
 
 # make a df with the wells used for training and testing with their respective doses

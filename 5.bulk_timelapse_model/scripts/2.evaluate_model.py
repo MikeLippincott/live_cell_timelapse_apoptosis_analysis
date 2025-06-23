@@ -7,69 +7,13 @@
 import pathlib
 
 import joblib
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 # In[2]:
-
-
-# load the training data
-profile_file_dir = pathlib.Path("../data_splits/test.parquet").resolve(strict=True)
-
-models_path = pathlib.Path("../models").resolve(strict=True)
-
-terminal_column_names = pathlib.Path("../results/terminal_columns.txt").resolve(
-    strict=True
-)
-predictions_save_path = pathlib.Path(
-    "../results/predicted_terminal_profiles.parquet"
-).resolve()
-terminal_column_names = [
-    line.strip() for line in terminal_column_names.read_text().splitlines()
-]
-results_dir = pathlib.Path("../results/").resolve()
-results_dir.mkdir(parents=True, exist_ok=True)
-
-profile_df = pd.read_parquet(profile_file_dir)
-print(profile_df.shape)
-profile_df.head()
-
-
-# In[3]:
-
-
-terminal_df = profile_df[terminal_column_names]
-profile_df = profile_df.drop(columns=terminal_column_names)
-
-
-# In[4]:
-
-
-models = pathlib.Path(models_path).glob("*.joblib")
-models_dict = {
-    "model_name": [],
-    "model_path": [],
-    "shuffled": [],
-    "feature": [],
-}
-
-for model_path in models:
-    print(model_path.name)
-    # print(model_path.name.split("singlefeature")[1].strip(".joblib").strip("_"))
-    models_dict["model_name"].append(model_path.name)
-    models_dict["model_path"].append(model_path)
-    models_dict["shuffled"].append(
-        "shuffled" if "shuffled" in model_path.name else "not_shuffled"
-    )
-    models_dict["feature"].append(
-        model_path.name.split("singlefeature")[1].strip(".joblib").strip("_")
-        if "singlefeature" in model_path.name
-        else "all_terminal_features"
-    )
-
-
-# In[5]:
 
 
 def model_stats_grab(
@@ -110,6 +54,63 @@ def model_stats_grab(
     r2 = r2_score(actual_df, predicted_df)
 
     return mse, mae, r2
+
+
+# In[3]:
+
+
+# load the training data
+profile_file_dir = pathlib.Path("../data_splits/test.parquet").resolve(strict=True)
+
+models_path = pathlib.Path("../models").resolve(strict=True)
+
+terminal_column_names = pathlib.Path("../results/terminal_columns.txt").resolve(
+    strict=True
+)
+predictions_save_path = pathlib.Path(
+    "../results/predicted_terminal_profiles.parquet"
+).resolve()
+terminal_column_names = [
+    line.strip() for line in terminal_column_names.read_text().splitlines()
+]
+results_dir = pathlib.Path("../results/").resolve()
+results_dir.mkdir(parents=True, exist_ok=True)
+
+profile_df = pd.read_parquet(profile_file_dir)
+print(profile_df.shape)
+profile_df.head()
+
+
+# In[4]:
+
+
+terminal_df = profile_df[terminal_column_names]
+profile_df = profile_df.drop(columns=terminal_column_names)
+
+
+# In[ ]:
+
+
+models = pathlib.Path(models_path).glob("*.joblib")
+models_dict = {
+    "model_name": [],
+    "model_path": [],
+    "shuffled": [],
+    "feature": [],
+}
+
+for model_path in models:
+    print(model_path.name)
+    models_dict["model_name"].append(model_path.name)
+    models_dict["model_path"].append(model_path)
+    models_dict["shuffled"].append(
+        "shuffled" if "shuffled" in model_path.name else "not_shuffled"
+    )
+    models_dict["feature"].append(
+        model_path.name.split("singlefeature")[1].strip(".joblib").strip("_")
+        if "singlefeature" in model_path.name
+        else "all_terminal_features"
+    )
 
 
 # In[6]:
@@ -156,6 +157,7 @@ for i, model_name in enumerate(models_dict["model_name"]):
     results_dict["mae"].append(mae)
     results_dict["r2"].append(r2)
 results_df = pd.DataFrame(results_dict)
+results_df.to_parquet(predictions_save_path, index=False)
 results_df.head(8)
 
 
@@ -163,8 +165,6 @@ results_df.head(8)
 
 
 # plot the performance of the models
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 sns.set(style="whitegrid")
 plt.figure(figsize=(12, 6))
@@ -172,18 +172,13 @@ sns.barplot(x="feature", y="mse", hue="shuffled", data=results_df, palette="viri
 plt.xticks(rotation=45, ha="right")
 plt.title("Model Performance: Mean Squared Error (MSE)")
 plt.tight_layout()
-# plt.savefig(results_dir / "model_performance_mse.png")
 plt.figure(figsize=(12, 6))
 sns.barplot(x="feature", y="mae", hue="shuffled", data=results_df, palette="viridis")
 plt.xticks(rotation=45, ha="right")
 plt.title("Model Performance: Mean Absolute Error (MAE)")
 plt.tight_layout()
-# plt.savefig(results_dir / "model_performance_mae.png")
 plt.figure(figsize=(12, 6))
 sns.barplot(x="feature", y="r2", hue="shuffled", data=results_df, palette="viridis")
 plt.xticks(rotation=45, ha="right")
 plt.title("Model Performance: R-squared (R2)")
 plt.tight_layout()
-# plt.savefig(results_dir / "model_performance_r2.png")
-# Save the results DataFrame to a parquet file
-# results_df.to_parquet(predictions_save_path, index=False)

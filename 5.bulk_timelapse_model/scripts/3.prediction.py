@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[11]:
+# In[1]:
 
 
 import pathlib
@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import pycytominer
 
-# In[12]:
+# In[2]:
 
 
 train_test_wells_path = pathlib.Path(
@@ -55,7 +55,7 @@ print(aggregate_df.shape)
 aggregate_df.head()
 
 
-# In[13]:
+# In[3]:
 
 
 models_path = pathlib.Path("../models/").resolve(strict=True)
@@ -68,8 +68,6 @@ models_dict = {
 }
 
 for model_path in models:
-    print(model_path.name)
-    # print(model_path.name.split("singlefeature")[1].strip(".joblib").strip("_"))
     models_dict["model_name"].append(model_path.name)
     models_dict["model_path"].append(model_path)
     models_dict["shuffled"].append(
@@ -82,7 +80,7 @@ for model_path in models:
     )
 
 
-# In[14]:
+# In[4]:
 
 
 # map the train/test wells to the aggregate data
@@ -97,7 +95,7 @@ aggregate_df = aggregate_df.dropna(subset="Metadata_data_split")
 aggregate_df["Metadata_data_split"].unique()
 
 
-# In[15]:
+# In[5]:
 
 
 # if the data_split is train and the time is not 12 then set to non_trained_pair
@@ -112,26 +110,14 @@ aggregate_df["Metadata_data_split"] = aggregate_df.apply(
 )
 
 
-# In[16]:
+# In[6]:
 
 
 metadata_columns = [x for x in aggregate_df.columns if "metadata" in x.lower()]
 aggregate_features_df = aggregate_df.drop(columns=metadata_columns, errors="ignore")
 
 
-# In[17]:
-
-
-models_dict["model_name"]
-
-
-# In[18]:
-
-
-aggregate_df
-
-
-# In[19]:
+# In[7]:
 
 
 results_dict = {}
@@ -168,7 +154,7 @@ for i, model_name in enumerate(models_dict["feature"]):
     print(results_dict[f"{models_dict['feature'][i]}"].shape)
 
 
-# In[20]:
+# In[8]:
 
 
 for model in results_dict.keys():
