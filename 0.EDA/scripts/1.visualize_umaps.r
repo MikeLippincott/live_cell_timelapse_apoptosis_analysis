@@ -12,6 +12,7 @@ args <- parser$parse_args()
 
 data_mode <- args$data_mode
 
+
 # set paths
 umap_file_path <- file.path("../../data/umap/",paste0(data_mode,"_umap_transformed.parquet"))
 umap_file_path <- normalizePath(umap_file_path)
@@ -51,7 +52,7 @@ umap_df$Metadata_Time <- gsub("T00", "", umap_df$Metadata_Time)
 # make time an integer
 umap_df$Metadata_Time <- as.integer(umap_df$Metadata_Time)
 # change the Metadata Time columnd to minutes
-umap_df$Metadata_Time <- ((umap_df$Metadata_Time)-1) * 30
+umap_df$Metadata_Time <- ((umap_df$Metadata_Time)) * 30
 # add "min" to the time column
 umap_df$Metadata_Time <- paste0(umap_df$Metadata_Time, " min")
 # make the metadata time column a factor with levels
@@ -106,6 +107,7 @@ umap_df_centroids <- umap_df %>% group_by(Metadata_dose, Metadata_Time) %>% summ
     UMAP0_centroid = mean(UMAP0),
     UMAP1_centroid = mean(UMAP1)
 )
+umap_df_centroids$Metadata_Time <- as.numeric(gsub(" min", "", umap_df_centroids$Metadata_Time))
 
 width <- 15
 height <- 5
@@ -117,26 +119,20 @@ umap_centroid_plot <- (
     + theme_bw()
     + labs( x = "UMAP0", y = "UMAP1", title = "Centroids of UMAP space per dose of Staurosporine over time")
     # add custom colors
-    + scale_color_manual(values = c(
-        "0 min" = temporal_palette[1],
-        "30 min" = temporal_palette[2],
-        "60 min" = temporal_palette[3],
-        "90 min" = temporal_palette[4],
-        "120 min" = temporal_palette[5],
-        "150 min" = temporal_palette[6],
-        "180 min" = temporal_palette[7],
-        "210 min" = temporal_palette[8],
-        "240 min" = temporal_palette[9],
-        "270 min" = temporal_palette[10],
-        "300 min" = temporal_palette[11],
-        "330 min" = temporal_palette[12],
-        "360 min" = temporal_palette[13]
-    ))
+    + scale_color_gradientn(
+        colors = temporal_palette,
+        breaks = c(0, 180, 360), # breaks at 0, 90, and 360 minutes
+        labels = c("0 min", "180 min", "360 min")
+    )
 
 
     # change legend title
-    + guides(color = guide_legend(title = "Time (min)", ncol = 2), size = 5)
-
+    + guides(
+        color = guide_legend(
+            title = "Time (min)", hjust = 0.5, ncol = 3
+        ),
+        size = 5
+    )
     + theme(
         strip.text.x = element_text(size = 24),
         strip.text.y = element_text(size = 24),
@@ -147,6 +143,7 @@ umap_centroid_plot <- (
         axis.ticks.x = element_line(size = 1),
         axis.ticks.y = element_line(size = 1),
         legend.text = element_text(size = 24),
+        legend.position = "bottom",
         legend.title = element_text(size = 24, hjust = 0.5),
         plot.title = element_text(size = 24, hjust = 0.5)
         )
@@ -159,7 +156,7 @@ ggsave(paste0("../figures/",data_mode,"/umap_centroid_plot.png"), plot = umap_ce
 
 
 # get the first two, middle, and last two doses
-dose_levels <- c("0 nM", "0.61 nM", "9.77 nM", "78.13 nM", "156.25 nM")
+dose_levels <- c("0 nM", "0.61 nM", "9.77 nM",  "78.13 nM", "156.25 nM")
 umap_df <- umap_df %>% filter(Metadata_dose %in% dose_levels)
 
 # make a ggplot of the umap
@@ -199,6 +196,7 @@ umap_df_centroids <- umap_df %>% group_by(Metadata_dose, Metadata_Time) %>% summ
     UMAP0_centroid = mean(UMAP0),
     UMAP1_centroid = mean(UMAP1)
 )
+umap_df_centroids$Metadata_Time <- as.numeric(gsub(" min", "", umap_df_centroids$Metadata_Time))
 
 width <- 20
 height <- 4
@@ -209,39 +207,38 @@ umap_centroid_plot <- (
     + geom_point(size = 5)
     + theme_bw()
     + labs( x = "UMAP0", y = "UMAP1", title = "Centroids of UMAP space per dose of Staurosporine over time")
-    # add custom colors
-    + scale_color_manual(values = c(
-        "0 min" = temporal_palette[1],
-        "30 min" = temporal_palette[2],
-        "60 min" = temporal_palette[3],
-        "90 min" = temporal_palette[4],
-        "120 min" = temporal_palette[5],
-        "150 min" = temporal_palette[6],
-        "180 min" = temporal_palette[7],
-        "210 min" = temporal_palette[8],
-        "240 min" = temporal_palette[9],
-        "270 min" = temporal_palette[10],
-        "300 min" = temporal_palette[11],
-        "330 min" = temporal_palette[12],
-        "360 min" = temporal_palette[13]
-    ))
-
+    # add a color palette for the doses
+    + scale_color_gradientn(
+        colors = temporal_palette,
+        breaks = c(0, 180, 360), # breaks at 0, 90, and 360 minutes
+        labels = c("0 min", "180 min", "360 min")
+    )
 
     # change legend title
-    + guides(color = guide_legend(title = "Time (min)", ncol = 2), size = 5)
+
+    + guides(
+        color = guide_legend(
+            title = "Time (min)", hjust = 0.5, ncol = 3
+        ),
+        size = 5
+    )
 
     + theme(
-        strip.text.x = element_text(size = 18),
-        strip.text.y = element_text(size = 18),
+        strip.text.x = element_text(size = 24),
+        strip.text.y = element_text(size = 24),
         axis.text.x = element_text(size = 24),
         axis.text.y = element_text(size = 24),
-        legend.text = element_text(size = 18),
-        legend.title = element_text(size = 18, hjust = 0.5),
-        plot.title = element_text(size = 24, hjust = 0.5)
+        axis.title.x = element_text(size = 24),
+        axis.title.y = element_text(size = 24),
+        legend.text = element_text(size = 24),
+        legend.title = element_text(size = 24, hjust = 0.5),
+        plot.title = element_text(size = 24, hjust = 0.5),
+        legend.position = "bottom",
+        legend.box = "horizontal",
         )
     + facet_grid(~Metadata_dose)
 
 )
 umap_centroid_plot
 # save
-ggsave(paste0("../figures/",data_mode,"/umap_centroid_plot_part of doses.png"), plot = umap_centroid_plot, width = width, height = height, dpi = 600)
+ggsave(paste0("../figures/",data_mode,"/umap_centroid_plot_part_of_doses.png"), plot = umap_centroid_plot, width = width, height = height, dpi = 600)
