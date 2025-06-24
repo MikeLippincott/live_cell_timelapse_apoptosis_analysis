@@ -6,7 +6,7 @@
 # Note that I also separate the disctinction between Cellprofiler (CP) and scDINO features.
 
 # ## The linear model will be constructed as follows:
-# ### $Y_{feature} = \beta_t X_t + \beta_{cell count} X_{cell count} + \beta_{Stuarosporine \space dose} X_{Stuarosporine \space dose} + \beta_{interaction_{cell \space count + time}}(X_{cell \space count}X_t) + \beta_{interaction_{dose + time}}(X_{dose}X_t) +  \beta_0$
+# ### $Y_{feature} = \beta_t X_t + \beta_{cell count} X_{cell count} + \beta_{Stuarosporine \space dose} X_{Stuarosporine \space dose} + \beta_0$
 #
 #
 #
@@ -14,7 +14,7 @@
 # ### The model explained
 # This model fits the factors to every individual morphology feature.
 # This ulitmatly allows us to understand and interpret the contribution of each factor to the morphology feature.
-# We also add interaction terms to further understand the relationship of multiple factors with eachother their contribution to each morphology feature.
+#
 # ### We define and interpret each term as follows:
 # - $Y_{feature}$: the morphology feature we are trying to predict
 #     - This is a morphology feature extracted from either CellProfiler or scDINO.
@@ -32,15 +32,6 @@
 # - $X_{Stuarosporine \space dose}$: the Stuarosporine dose variable
 #     - This variable represents the Stuarosporine dose in each well.
 #     - note that the number input here is on a continuous scale with the attached units of nM.
-# #### The interaction terms
-# - $\beta_{interaction}(X_{cell \space count}X_t)$: the coefficient for the interaction term
-#     - This coefficient represents the contribution of the interaction between cell count and time to the morphology feature.
-# - $X_{cell \space count}X_t$: the interaction term of cell count and time
-#     - This variable represents the interaction between cell count and time.
-# - $\beta_{interaction}(X_{dose}X_t)$: the coefficient for the interaction term
-#     - This coefficient represents the contribution of the interaction between Stuarosporine dose and time to the morphology feature.
-# - $X_{dose}X_t$: the interaction term of Stuarosporine dose and time
-#     - This variable represents the interaction between Stuarosporine dose and time.
 # - $\beta_0$: the intercept
 #
 # #### Hypothesis:
@@ -140,8 +131,6 @@ feature_columns = [x for x in df.columns if "Metadata" not in x]
 time_column = "Metadata_Time"
 single_cells_count_column = "Metadata_number_of_singlecells"
 dose_column = "Metadata_dose"
-interaction_column1 = "Metadata_interaction1"
-interaction_column2 = "Metadata_interaction2"
 
 # ensure that the interaction terms are both numeric
 df["Metadata_number_of_singlecells"] = pd.to_numeric(
@@ -149,8 +138,6 @@ df["Metadata_number_of_singlecells"] = pd.to_numeric(
 )
 df["Metadata_Time"] = pd.to_numeric(df["Metadata_Time"], errors="coerce")
 df["Metadata_dose"] = pd.to_numeric(df["Metadata_dose"], errors="coerce")
-df[interaction_column1] = df["Metadata_number_of_singlecells"] * df["Metadata_Time"]
-df[interaction_column2] = df["Metadata_Time"] * df["Metadata_dose"]
 
 
 # In[5]:
@@ -179,8 +166,6 @@ X = df[
         time_column,
         single_cells_count_column,
         dose_column,
-        interaction_column1,
-        interaction_column2,
     ]
 ]
 for feature in tqdm.tqdm(feature_columns):
@@ -324,24 +309,19 @@ scdino_df[["Compartment", "Feature_type", "Measurement"]] = "scDINO"
 
 final_df = pd.concat([cp_df, scdino_df], axis=0)
 final_df["Channel"] = final_df["Channel"].str.replace("Adjacent", "None")
-
+final_df["Channel"] = final_df["Channel"].str.replace("Y", "None")
 final_df["Channel"] = final_df["Channel"].str.replace("CL_488_1", "488-1")
 final_df["Channel"] = final_df["Channel"].str.replace("CL_488_2", "488-2")
 final_df["Channel"] = final_df["Channel"].str.replace("CL_561", "561")
 final_df["Channel"] = final_df["Channel"].str.replace("488-1", "CL 488-1")
 final_df["Channel"] = final_df["Channel"].str.replace("488-2", "CL 488-2")
 final_df["Channel"] = final_df["Channel"].str.replace("561", "CL 561")
-final_df["Channel"].unique()
 
 
 # In[13]:
 
 
 final_df["variate"] = final_df["variate"].str.replace("dose", "Dose")
-final_df["variate"] = final_df["variate"].str.replace(
-    "interaction1", "Time x \nCell count"
-)
-final_df["variate"] = final_df["variate"].str.replace("interaction2", "Time x \nDose")
 
 
 # In[14]:
