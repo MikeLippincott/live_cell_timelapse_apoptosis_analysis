@@ -205,7 +205,6 @@ umap_df_centroids <- umap_df %>% group_by(Metadata_dose, Metadata_Time) %>% summ
     UMAP1_centroid = mean(UMAP_1)
 )
 umap_df_centroids$Metadata_Time <- as.numeric(gsub(" min", "", umap_df_centroids$Metadata_Time))
-head(umap_df_centroids)
 
 
 width <- 15
@@ -216,21 +215,21 @@ umap_centroid_plot <- (
     ggplot(data = umap_df_centroids, aes(x = UMAP0_centroid, y = UMAP1_centroid, color = Metadata_Time))
     + geom_point(size = 5)
     + theme_bw()
-    + labs( x = "UMAP0", y = "UMAP1", title = "Centroids of UMAP space per dose of Staurosporine over time")
+    + labs( x = "UMAP0", y = "UMAP1")
     # add custom colors
     + scale_color_gradientn(
         colors = temporal_palette,
+
         breaks = c(0, 180, 360), # breaks at 0, 90, and 360 minutes
-        labels = c("0 min", "180 min", "360 min")
-    )
-
-
-    # change legend title
-    + guides(
-        color = guide_legend(
-            title = "Time (min)", hjust = 0.5, ncol = 3
-        ),
-        size = 5
+        labels = c("0 min", "180 min", "360 min"),
+        name = "Time (minutes)",
+        guide = guide_colorbar(
+            title.position = "top",
+            title.hjust = 0.5,
+            title.theme = element_text(size = 24),
+            # make the legend longer
+            barwidth = 20
+        )
     )
     + theme(
         strip.text.x = element_text(size = 24),
@@ -341,7 +340,6 @@ layout <- c(
     area(t=2, b=2, l=3, r=4) # D
 )
 metric_v_time_final_plot <- (
-    # umap_plot_facet
     umap_centroid_plot
     + mAP_plot
 
@@ -350,7 +348,7 @@ metric_v_time_final_plot <- (
 
     + plot_layout(design = layout, widths = c(0.6, 1))
     # make bottom plot not align
-    + plot_annotation(tag_levels = 'A') & theme(plot.tag = element_text(size = 20))
+    + plot_annotation(tag_levels = 'A') & theme(plot.tag = element_text(size = 28))
 )
 ggsave(
     filename = final_figure_path,
@@ -360,5 +358,3 @@ ggsave(
     dpi = 600
 )
 metric_v_time_final_plot
-
-
