@@ -6,7 +6,7 @@
 # Note that I also separate the disctinction between Cellprofiler (CP) and scDINO features.
 
 # ## The linear model will be constructed as follows:
-# ### $Y_{feature} = \beta_t X_t + \beta_{cell count} X_{cell count} + \beta_{Stuarosporine \space dose} X_{Stuarosporine \space dose} + \beta_{interaction_{cell \space count + time}}(X_{cell \space count}X_t) + \beta_{interaction_{dose + time}}(X_{dose}X_t) +  \beta_0$
+# ### $Y_{feature} = \beta_t X_t + \beta_{cell count} X_{cell count} + \beta_{Stuarosporine \space dose} X_{Stuarosporine \space dose} + \beta_0$
 #
 #
 #
@@ -14,7 +14,7 @@
 # ### The model explained
 # This model fits the factors to every individual morphology feature.
 # This ulitmatly allows us to understand and interpret the contribution of each factor to the morphology feature.
-# We also add interaction terms to further understand the relationship of multiple factors with eachother their contribution to each morphology feature.
+#
 # ### We define and interpret each term as follows:
 # - $Y_{feature}$: the morphology feature we are trying to predict
 #     - This is a morphology feature extracted from either CellProfiler or scDINO.
@@ -32,15 +32,6 @@
 # - $X_{Stuarosporine \space dose}$: the Stuarosporine dose variable
 #     - This variable represents the Stuarosporine dose in each well.
 #     - note that the number input here is on a continuous scale with the attached units of nM.
-# #### The interaction terms
-# - $\beta_{interaction}(X_{cell \space count}X_t)$: the coefficient for the interaction term
-#     - This coefficient represents the contribution of the interaction between cell count and time to the morphology feature.
-# - $X_{cell \space count}X_t$: the interaction term of cell count and time
-#     - This variable represents the interaction between cell count and time.
-# - $\beta_{interaction}(X_{dose}X_t)$: the coefficient for the interaction term
-#     - This coefficient represents the contribution of the interaction between Stuarosporine dose and time to the morphology feature.
-# - $X_{dose}X_t$: the interaction term of Stuarosporine dose and time
-#     - This variable represents the interaction between Stuarosporine dose and time.
 # - $\beta_0$: the intercept
 #
 # #### Hypothesis:

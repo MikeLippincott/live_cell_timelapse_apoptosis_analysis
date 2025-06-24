@@ -98,23 +98,7 @@ lm_coeff_plot <- (
     )
     + labs(
         x = "Beta Coefficient",
-        y = "-log10(p-value)"
-    )
-    # + ylim(0, max(lm_coeff_df$log10p_value)+1)
-    + geom_hline(
-        yintercept = -log10(0.05),
-        linetype = "dashed",
-        color = "red",
-        linewidth = 1
-    )
-    # change the the x increments
-    + ylim(0,1)
-    + scale_x_continuous(
-        breaks = seq(
-            from = round(min(lm_coeff_df$beta),2),
-            to = round(max(lm_coeff_df$beta),2),
-            by = 0.1,
-        )
+        y = "R-squared",
     )
     + plot_themes
     + guides(
@@ -137,19 +121,17 @@ lm_coeff_plot <- (
         Channel ~ variate,
 
     )
-    + geom_vline(
-        xintercept = 0,
-        linetype = "dashed",
-    )
     + theme(
-        panel.spacing = unit(2, "lines")  # Adjust spacing between facets
+        panel.spacing = unit(1, "lines"),  # Adjust spacing between facets
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)
+
     )
         # change the the x increments
     + scale_x_continuous(
         breaks = seq(
-            from = round(min(lm_coeff_df$beta),2),
-            to = round(max(lm_coeff_df$beta),2),
-            by = 0.4,
+            from = -0.15,
+            to = 0.15,
+            by = 0.15
         )
     )
 )
@@ -188,15 +170,6 @@ lm_coeff_plot2 <- (
         x = "Beta coefficient",
         y = "R-squared value"
     )
-    # + ylim(0, max(lm_coeff_df$log10p_value)+1)
-    + geom_hline(
-        yintercept = -log10(0.05),
-        linetype = "dashed",
-        color = "red",
-        linewidth = 1
-    )
-    + ylim(0,1)
-
     + plot_themes
     + guides(
         fill = guide_legend(
@@ -222,14 +195,17 @@ lm_coeff_plot2 <- (
         linetype = "dashed",
     )
         + theme(
-        panel.spacing = unit(2, "lines")  # Adjust spacing between facets
+        panel.spacing = unit(1, "lines"),  # Adjust spacing between facets
+        # x ticks rotation
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)
+
     )
         # change the the x increments
     + scale_x_continuous(
         breaks = seq(
-            from = round(min(lm_coeff_df$beta),2),
-            to = round(max(lm_coeff_df$beta),2),
-            by = 0.4,
+            from = -0.15,
+            to = 0.15,
+            by = 0.15
         )
     )
 )
@@ -243,4 +219,6 @@ ggsave(
     units = "in",
 )
 lm_coeff_plot2
+
+
 
