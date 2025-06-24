@@ -119,7 +119,7 @@ mAP_df$Shuffle <- gsub(
 
 mAP_plot <- (
     ggplot(data = mAP_df, aes(x = Metadata_Time, y = mean_average_precision))
-    + geom_line(aes(color = Metadata_dose), linewidth = 1)
+    + geom_line(aes(color = Metadata_dose), size = 2)
     + facet_wrap(Shuffle~.)
     + scale_color_manual(values = color_pallete_for_dose)
     + labs(
@@ -194,6 +194,63 @@ umap_plot_facet <- (
     + plot_themes
     )
 umap_plot_facet
+
+# set temporal colour palette of 13 hues of blue
+temporal_palette <- c(
+    "#008CF5", "#0079E7", "#0066D9", "#0053CB", "#0040BD", "#002D9F", "#001A91", "#000781", "#000570", "#000460", "#000350", "#000240", "#000130"
+)
+# calculate the centroid of each UMAP cluster dose and time wise
+umap_df_centroids <- umap_df %>% group_by(Metadata_dose, Metadata_Time) %>% summarise(
+    UMAP0_centroid = mean(UMAP_0),
+    UMAP1_centroid = mean(UMAP_1)
+)
+umap_df_centroids$Metadata_Time <- as.numeric(gsub(" min", "", umap_df_centroids$Metadata_Time))
+head(umap_df_centroids)
+
+
+width <- 15
+height <- 15
+options(repr.plot.width = width, repr.plot.height = height)
+# plot the centroids per dose over time
+umap_centroid_plot <- (
+    ggplot(data = umap_df_centroids, aes(x = UMAP0_centroid, y = UMAP1_centroid, color = Metadata_Time))
+    + geom_point(size = 5)
+    + theme_bw()
+    + labs( x = "UMAP0", y = "UMAP1", title = "Centroids of UMAP space per dose of Staurosporine over time")
+    # add custom colors
+    + scale_color_gradientn(
+        colors = temporal_palette,
+        breaks = c(0, 180, 360), # breaks at 0, 90, and 360 minutes
+        labels = c("0 min", "180 min", "360 min")
+    )
+
+
+    # change legend title
+    + guides(
+        color = guide_legend(
+            title = "Time (min)", hjust = 0.5, ncol = 3
+        ),
+        size = 5
+    )
+    + theme(
+        strip.text.x = element_text(size = 24),
+        strip.text.y = element_text(size = 24),
+        axis.text.x = element_text(size = 24),
+        axis.text.y = element_text(size = 24),
+        axis.title.x = element_text(size = 24),
+        axis.title.y = element_text(size = 24),
+        axis.ticks.x = element_line(size = 1),
+        axis.ticks.y = element_line(size = 1),
+        legend.text = element_text(size = 24),
+        legend.position = "bottom",
+        legend.title = element_text(size = 24, hjust = 0.5),
+        plot.title = element_text(size = 24, hjust = 0.5)
+        )
+    + facet_wrap(~Metadata_dose,nrow = 2)
+
+)
+umap_centroid_plot
+
 
 # get the well from the well_fov column, get the first part of the string
 # before the underscore and number
@@ -284,8 +341,8 @@ layout <- c(
     area(t=2, b=2, l=3, r=4) # D
 )
 metric_v_time_final_plot <- (
-    umap_plot_facet
-
+    # umap_plot_facet
+    umap_centroid_plot
     + mAP_plot
 
     + cell_count_v_time_plot_colored_by_dose
@@ -303,3 +360,5 @@ ggsave(
     dpi = 600
 )
 metric_v_time_final_plot
+
+
