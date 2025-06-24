@@ -6,10 +6,7 @@
 
 import pathlib
 
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-import tqdm
 import umap
 
 # In[2]:
@@ -79,29 +76,33 @@ def fit_umap_to_the_first_timepoint(
 # In[3]:
 
 
-CP_scDINO_profile_file_path = pathlib.Path(
-    "../../data/CP_scDINO_features/combined_CP_scDINO_norm_fs.parquet"
-).resolve(strict=True)
-df = pd.read_parquet(CP_scDINO_profile_file_path)
-df.head()
-
-
-# In[4]:
-
-
-metadata_columns = [x for x in df.columns if "Metadata" in x]
-scDINO_columns = [x for x in df.columns if "scDINO" in x]
-CP_columns = df.drop(columns=metadata_columns + scDINO_columns).columns
-CP_scDINO_columns = df.drop(metadata_columns, axis=1).columns
-
-feature_set_dict = {
-    "scDINO": scDINO_columns,
-    "CP": CP_columns,
-    "CP_scDINO": CP_scDINO_columns,
+dictionary_of_feature_sets = {
+    "single-cell_profiles": {
+        "CP": pathlib.Path(
+            "../../data/CP_feature_select/profiles/features_selected_profile.parquet"
+        ).resolve(strict=True),
+        "scDINO": pathlib.Path(
+            "../../data/scDINO/CLS_features_annotated_normalized_feature_selected.parquet"
+        ).resolve(strict=True),
+        "CP_scDINO": pathlib.Path(
+            "../../data/CP_scDINO_features/combined_CP_scDINO_norm_fs.parquet"
+        ).resolve(strict=True),
+    },
+    "bulk_profiles": {
+        "CP": pathlib.Path(
+            "../../data/CP_aggregated/profiles/aggregated_profile.parquet"
+        ).resolve(strict=True),
+        "scDINO": pathlib.Path(
+            "../../data/scDINO/CLS_features_annotated_normalized_feature_selected_aggregated.parquet"
+        ).resolve(strict=True),
+        "CP_scDINO": pathlib.Path(
+            "../../data/CP_scDINO_features/combined_CP_scDINO_norm_fs_aggregated.parquet"
+        ).resolve(strict=True),
+    },
 }
 
 
-# In[5]:
+# In[4]:
 
 
 umap_model = umap.UMAP(
@@ -114,21 +115,25 @@ umap_model = umap.UMAP(
 )
 
 
-# In[6]:
+# In[5]:
 
 
-for feature_set_name, feature_set in tqdm.tqdm(feature_set_dict.items()):
-    umap_df = fit_umap_to_the_first_timepoint(
-        df,
-        timepoint_column="Metadata_Time",
-        metadata_columns=metadata_columns,
-        feature_columns=feature_set,
-        umap_model=umap_model,
-    )
-    # set the save path of the umap data
-    umap_save_path = pathlib.Path(
-        f"../results/UMAP/{feature_set_name}_umap.parquet"
-    ).resolve()
-    umap_save_path.parent.mkdir(parents=True, exist_ok=True)
-    # save the umap data
-    umap_df.to_parquet(umap_save_path, index=False)
+for profile_level in dictionary_of_feature_sets.keys():
+    for profile in dictionary_of_feature_sets[profile_level].keys():
+        profile_df = pd.read_parquet(dictionary_of_feature_sets[profile_level][profile])
+        metadata_columns = [x for x in profile_df.columns if "Metadata_" in x]
+        feature_columns = [x for x in profile_df.columns if "Metadata_" not in x]
+        umap_df = fit_umap_to_the_first_timepoint(
+            profile_df,
+            timepoint_column="Metadata_Time",
+            metadata_columns=metadata_columns,
+            feature_columns=feature_columns,
+            umap_model=umap_model,
+        )
+        # set the save path of the umap data
+        umap_save_path = pathlib.Path(
+            f"../results/UMAP/{profile_level}_{profile}_umap.parquet"
+        ).resolve()
+        umap_save_path.parent.mkdir(parents=True, exist_ok=True)
+        # save the umap data
+        umap_df.to_parquet(umap_save_path, index=False)
