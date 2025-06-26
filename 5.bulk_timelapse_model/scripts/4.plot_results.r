@@ -1,4 +1,4 @@
-for (pkg in c("ggplot2", "dplyr", "patchwork")) {
+for (pkg in c("ggplot2", "dplyr", "patchwork", "ggplotify")) {
     suppressPackageStartupMessages(
         suppressWarnings(
             library(
@@ -397,6 +397,27 @@ ggsave(
 )
 Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV_plot
 
+# read and rasterize the workflow figure
+workflow_figure_path <- file.path(
+    "../external_images/timelapse_apoptosis_ML_strategy_figure.png"
+)
+workflow_figure <- png::readPNG(workflow_figure_path)
+workflow_figure_raster <- grid::rasterGrob(workflow_figure, interpolate = TRUE)
+workflow_figure_raster <- as.ggplot(
+    workflow_figure_raster
+) +
+    theme_void() +
+    theme(
+        plot.margin = margin(0, 0, 0, 0)
+    )
+# cut down on the whitespace around the image
+workflow_figure_raster <- workflow_figure_raster +
+    theme(
+        plot.margin = margin(0, 0, -1, -1) # left, right, top, bottom
+    )
+
+workflow_figure_raster
+
 Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV_plot <- Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV_plot + theme(legend.position = "none")
 pca1_plot <- pca1_plot + theme(legend.position = "none")
 
@@ -408,14 +429,16 @@ height <- 15
 width <- 15
 options(repr.plot.width=width, repr.plot.height=height)
 final_plot <- (
-    Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV_plot
-    + pca1_plot
+    # workflow_figure_raster
+    # tight layout
+    wrap_elements(
+        full = workflow_figure_raster
+    )
+    + Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV_plot
+
     + pca_over_time_plot
     + plot_layout(design = layout)
-    + plot_annotation(
-        title = "PCA of predicted terminal profiles from all time points",
-        theme = theme(plot.title = element_text(size = 30, hjust = 0.5))
-    )
+    + plot_annotation(tag_levels = 'A') & theme(plot.tag = element_text(size = 20))
 )
 ggsave(
     filename = "../figures/final_predicted_terminal_profiles_from_all_time_points.png",

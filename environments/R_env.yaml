@@ -19,3 +19,4 @@ dependencies:
   - r-plotly
   - r-patchwork
   - r-gridextra
+  - r-ggplotify
