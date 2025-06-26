@@ -9,15 +9,15 @@ import pathlib
 import pandas as pd
 from sklearn.decomposition import PCA
 
-# In[2]:
+# In[ ]:
 
 
 def fit_pca_to_the_first_timepoint(
     df: pd.DataFrame,
-    timepoint_column: str = "Metadata_Time",
-    metadata_columns: list = None,
-    feature_columns: list = None,
-    pca_model: PCA = None,
+    timepoint_column: str,
+    metadata_columns: list,
+    feature_columns: list,
+    pca_model: PCA,
 ) -> pd.DataFrame:
     """
     This function fits a pca model to the first timepoint of the data and then applies the model to the rest of the data.
@@ -26,14 +26,14 @@ def fit_pca_to_the_first_timepoint(
     ----------
     df : pd.DataFrame
         The dataframe containing all feature, metadata, and timepoint columns.
-    timepoint_column : str, optional
-        The name of the column containing the timepoint information, by default "Metadata_Time"
-    metadata_columns : list, optional
-        The names of the columns containing the metadata information, by default None
-    feature_columns : list, optional
-        The names of the columns containing the feature information, by default None
-    pca_model : pca.pca, optional
-        The pca model to use, by default None. If None, a new pca model will be created with default parameters.
+    timepoint_column : str
+        The name of the column containing the timepoint information
+    metadata_columns : list
+        The names of the columns containing the metadata information
+    feature_columns : list
+        The names of the columns containing the feature information
+    pca_model : pca.pca
+        The pca model to use
 
     Returns
     -------
