@@ -448,5 +448,3 @@ ggsave(
     dpi = 600
 )
 final_plot
-
-
