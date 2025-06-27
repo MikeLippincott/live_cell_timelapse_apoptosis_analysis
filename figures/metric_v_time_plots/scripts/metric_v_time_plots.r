@@ -13,7 +13,7 @@ for (pkg in packages) {
 }
 
 umap_file_path <- file.path(
-    "../../../3.generate_umaps/results/UMAP/CP_scDINO_umap.parquet"
+    "../../../3.generate_umap_and_PCA/results/UMAP/single-cell_profiles_CP_scDINO_umap.parquet"
 )
 mAP_file_path <- file.path(
     "../../../4.mAP_analysis/data/mAP/mAP_scores_CP_scDINO.parquet"
@@ -38,16 +38,16 @@ cell_count_df <- arrow::read_parquet(cell_count_file_path)
 
 
 color_pallete_for_dose <- c(
-    "0.0" = "#57F2F2",
-    "0.61" = "#63D6D6",
-    "1.22" = "#65BABA",
-    "2.44" = "#68A3A3",
-    "4.88" = "#668A8A",
-    "9.77" = "#5E7070",
-    "19.53" = "#4B5757",
-    "39.06" = "#2F3D3D",
-    "78.13" = "#182424",
-    "156.25" = "#030A0A"
+    "0.0" = "#85FF33",
+    "0.61" = "#75FF1A",
+    "1.22" = "#62FF00",
+    "2.44" = "#4DC507",
+    "4.88" = "#398E0B",
+    "9.77" = "#265A0C",
+    "19.53" = "#132B08",
+    "39.06" = "#620B8E",
+    "78.13" = "#410C5A",
+    "156.25" = "#21082B"
 )
 
 umap_df$Metadata_dose <- as.character(umap_df$Metadata_dose)
@@ -98,7 +98,8 @@ plot_themes <- (
         axis.text.x = element_text(size = font_size),
         axis.title.y = element_text(size = font_size),
         axis.text.y = element_text(size = font_size),
-        strip.text = element_text(size = font_size),
+        strip.text = element_text(size = font_size -2),
+
     )
 
 
@@ -118,7 +119,7 @@ mAP_df$Shuffle <- gsub(
 
 mAP_plot <- (
     ggplot(data = mAP_df, aes(x = Metadata_Time, y = mean_average_precision))
-    + geom_line(aes(color = Metadata_dose), linewidth = 1)
+    + geom_line(aes(color = Metadata_dose), size = 2)
     + facet_wrap(Shuffle~.)
     + scale_color_manual(values = color_pallete_for_dose)
     + labs(
@@ -163,39 +164,18 @@ umap_df$Metadata_dose_w_unit <- factor(
     )
 )
 
-umap_plot <- (
-    ggplot(data = umap_df, aes(x = UMAP_0, y = UMAP_1))
-    + geom_point(aes(color = Metadata_Time), size = 0.5)
-    + scale_color_gradient(
-    low = "#D8BFD8",  # Light purple (Thistle)
-    high = "#4B0082"  # Dark purple (Indigo)
-    )
-    + labs(
-        x = "UMAP 0",
-        y = "UMAP 1",
-        color = "Time (minutes)",
-    )
-    # make the legend title on top
-    + guides(
-        color = guide_colorbar(
-            title.position = "top",
-            title.hjust = 0.5,
-            title.theme = element_text(size = 16),
-            # make the legend longer
-            barwidth = 20,
-        ))
-    + plot_themes
-
+temporal_palette <- c(
+    "#008CF5", "#0079E7", "#0066D9", "#0053CB", "#0040BD", "#002D9F", "#001A91", "#000781", "#000570", "#000460", "#000350", "#000240", "#000130"
 )
-umap_plot
 
 umap_df$Metadata_Time <- as.numeric(umap_df$Metadata_Time)
 umap_plot_facet <- (
     ggplot(data = umap_df, aes(x = UMAP_0, y = UMAP_1))
-    + geom_point(aes(color = Metadata_Time), size = 0.5)
-    + scale_color_gradient(
-    low = "#D8BFD8",  # Light purple (Thistle)
-    high = "#4B0082"  # Dark purple (Indigo)
+    + geom_point(aes(color = Metadata_Time), size = 0.5, alpha = 0.5)
+    + scale_color_gradientn(
+        colors = temporal_palette,
+        breaks = c(0, 180, 360), # breaks at 0, 90, and 360 minutes
+        labels = c("0 min", "180 min", "360 min")
     )
     + labs(
         x = "UMAP 0",
@@ -212,60 +192,84 @@ umap_plot_facet <- (
             barwidth = 20,
         ))
     + plot_themes
-)
+    )
 umap_plot_facet
 
-width <- 10
-height <- 5
-options(repr.plot.width=width, repr.plot.height=height)
-umap_0_v_time <- (
-    ggplot(data = umap_df, aes(x = Metadata_Time, y = UMAP_0))
-    + geom_line(aes(group = Metadata_track_id, color = Metadata_dose), alpha = 0.9, linewidth = 0.5)
-    + scale_color_manual(values = color_pallete_for_dose)
-    + labs(
-        x = "Time (minutes)",
-        y = "UMAP 0",
-        color = "Dose (nM)",
+# set temporal colour palette of 13 hues of blue
+temporal_palette <- c(
+    "#008CF5", "#0079E7", "#0066D9", "#0053CB", "#0040BD", "#002D9F", "#001A91", "#000781", "#000570", "#000460", "#000350", "#000240", "#000130"
+)
+# calculate the centroid of each UMAP cluster dose and time wise
+umap_df_centroids <- umap_df %>% group_by(Metadata_dose, Metadata_Time) %>% summarise(
+    UMAP0_centroid = mean(UMAP_0),
+    UMAP1_centroid = mean(UMAP_1)
+)
+umap_df_centroids$Metadata_Time <- as.numeric(gsub(" min", "", umap_df_centroids$Metadata_Time))
+umap_df_centroids$Metadata_dose_w_unit <- paste0(
+    umap_df_centroids$Metadata_dose,
+    " nM"
+)
+umap_df_centroids$Metadata_dose_w_unit <- as.character(umap_df_centroids$Metadata_dose_w_unit)
+umap_df_centroids$Metadata_dose_w_unit <- factor(
+    umap_df_centroids$Metadata_dose_w_unit,
+    levels = c(
+        '0.0 nM',
+        '0.61 nM',
+        '1.22 nM',
+        '2.44 nM',
+        '4.88 nM',
+        '9.77 nM',
+        '19.53 nM',
+        '39.06 nM',
+        '78.13 nM',
+        '156.25 nM'
     )
-    + guides(
-        color = guide_legend(
-            override.aes = list(linewidth = 5),
+)
 
+
+width <- 15
+height <- 15
+options(repr.plot.width = width, repr.plot.height = height)
+# plot the centroids per dose over time
+umap_centroid_plot <- (
+    ggplot(data = umap_df_centroids, aes(x = UMAP0_centroid, y = UMAP1_centroid, color = Metadata_Time))
+    + geom_point(size = 5)
+    + theme_bw()
+    + labs( x = "UMAP0", y = "UMAP1")
+    # add custom colors
+    + scale_color_gradientn(
+        colors = temporal_palette,
+
+        breaks = c(0, 180, 360), # breaks at 0, 90, and 360 minutes
+        labels = c("0 min", "180 min", "360 min"),
+        name = "Time (minutes)",
+        guide = guide_colorbar(
             title.position = "top",
             title.hjust = 0.5,
-            title.theme = element_text(size = font_size - 4 ),
-            label.theme = element_text(size = font_size - 4),
-            nrow = 2,
-        ))
-    + plot_themes
-
-
-)
-umap_0_v_time
-
-umap_1_v_time <- (
-    ggplot(data = umap_df, aes(x = Metadata_Time, y = UMAP_1))
-    + geom_line(aes(group = Metadata_track_id, color = Metadata_dose), alpha = 0.9, linewidth = 0.5)
-    + scale_color_manual(values = color_pallete_for_dose)
-    + labs(
-        x = "Time (minutes)",
-        y = "UMAP 1",
-        color = "Dose (nM)",
+            title.theme = element_text(size = 24),
+            # make the legend longer
+            barwidth = 20
+        )
     )
-    + guides(
-        color = guide_legend(
-            override.aes = list(linewidth = 5),
-
-            title.position = "top",
-            title.hjust = 0.5,
-            title.theme = element_text(size = font_size - 4 ),
-            label.theme = element_text(size = font_size - 4),
-            nrow = 2,
-        ))
-    + plot_themes
+    + theme(
+        strip.text.x = element_text(size = 20),
+        strip.text.y = element_text(size = 20),
+        axis.text.x = element_text(size = 20, angle = 45, hjust = 1),
+        axis.text.y = element_text(size = 20),
+        axis.title.x = element_text(size = 20),
+        axis.title.y = element_text(size = 20),
+        axis.ticks.x = element_line(size = 1),
+        axis.ticks.y = element_line(size = 1),
+        legend.text = element_text(size = 24),
+        legend.position = "bottom",
+        legend.title = element_text(size = 24, hjust = 0.5),
+        plot.title = element_text(size = 24, hjust = 0.5)
+        )
+    + facet_wrap(~Metadata_dose_w_unit,nrow = 2)
 
 )
-umap_1_v_time
+umap_centroid_plot
+
 
 # get the well from the well_fov column, get the first part of the string
 # before the underscore and number
@@ -298,26 +302,26 @@ cell_count_df$Metadata_dose <- factor(
     )
 )
 
-
-cell_count_v_time_plot <- (
-    ggplot(data = cell_count_df, aes(x = Metadata_time, y = total_CP_cells))
-    + geom_line(aes(color = well_fov), size = 1)
-
-    + facet_wrap(Metadata_dose~. ,nrow = 2)
-    + labs(
-        x = "Time (minutes)",
-        y = "Cell Count",
-        color = "Dose (nM)",
+# get the counts of cells per timepoint per well
+cell_count_df <- cell_count_df %>%
+    group_by(Metadata_time, Metadata_Well, Metadata_dose) %>%
+    summarise(
+        cell_count = sum(total_CP_cells),
+        .groups = "drop"
     )
-    + plot_themes
-    + theme(legend.position = "none")
 
-)
-cell_count_v_time_plot
+# normalize each well's cell count to the first timepoint
+cell_count_norm_df <- cell_count_df %>%
+    group_by(Metadata_Well, Metadata_dose) %>%
+    mutate(
+        cell_count_norm = cell_count / cell_count[Metadata_time == 0]
+    ) %>%
+    ungroup()
+
 
 cell_count_v_time_plot_colored_by_dose <- (
-    ggplot(data = cell_count_df, aes(x = Metadata_time, y = total_CP_cells))
-    + geom_line(aes(group = well_fov,color = Metadata_dose), size = 1)
+    ggplot(data = cell_count_df, aes(x = Metadata_time, y = cell_count))
+    + geom_line(aes(group = Metadata_Well,color = Metadata_dose), size = 2)
     + scale_color_manual(values = color_pallete_for_dose)
     + labs(
         x = "Time (minutes)",
@@ -329,8 +333,22 @@ cell_count_v_time_plot_colored_by_dose <- (
 )
 cell_count_v_time_plot_colored_by_dose
 
-mAP_plot <- mAP_plot + theme(legend.position = "none")
+normalized_cell_count_v_time_plot_colored_by_dose <- (
+    ggplot(data = cell_count_norm_df, aes(x = Metadata_time, y = cell_count_norm))
+    + geom_line(aes(group = Metadata_Well,color = Metadata_dose), size = 2)
+    + scale_color_manual(values = color_pallete_for_dose)
+    + labs(
+        x = "Time (minutes)",
+        y = "Normalized Cell Count",
+        color = "Dose (nM)",
+    )
+    + plot_themes
+
+)
+normalized_cell_count_v_time_plot_colored_by_dose
+
 cell_count_v_time_plot_colored_by_dose <- cell_count_v_time_plot_colored_by_dose + theme(legend.position = "none")
+normalized_cell_count_v_time_plot_colored_by_dose <- normalized_cell_count_v_time_plot_colored_by_dose + theme(legend.position = "none")
 
 width <- 17
 height <- 15
@@ -342,15 +360,15 @@ layout <- c(
     area(t=2, b=2, l=3, r=4) # D
 )
 metric_v_time_final_plot <- (
-    umap_plot_facet
-    + umap_0_v_time
+    umap_centroid_plot
     + mAP_plot
 
     + cell_count_v_time_plot_colored_by_dose
+    + normalized_cell_count_v_time_plot_colored_by_dose
 
     + plot_layout(design = layout, widths = c(0.6, 1))
     # make bottom plot not align
-    + plot_annotation(tag_levels = 'A') & theme(plot.tag = element_text(size = 20))
+    + plot_annotation(tag_levels = 'A') & theme(plot.tag = element_text(size = 28))
 )
 ggsave(
     filename = final_figure_path,
