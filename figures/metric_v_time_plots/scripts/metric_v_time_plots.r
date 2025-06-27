@@ -321,7 +321,7 @@ cell_count_norm_df <- cell_count_df %>%
 
 cell_count_v_time_plot_colored_by_dose <- (
     ggplot(data = cell_count_df, aes(x = Metadata_time, y = cell_count))
-    + geom_line(aes(group = Metadata_Well,color = Metadata_dose), size = 1)
+    + geom_line(aes(group = Metadata_Well,color = Metadata_dose), size = 2)
     + scale_color_manual(values = color_pallete_for_dose)
     + labs(
         x = "Time (minutes)",
@@ -335,7 +335,7 @@ cell_count_v_time_plot_colored_by_dose
 
 normalized_cell_count_v_time_plot_colored_by_dose <- (
     ggplot(data = cell_count_norm_df, aes(x = Metadata_time, y = cell_count_norm))
-    + geom_line(aes(group = Metadata_Well,color = Metadata_dose), size = 1)
+    + geom_line(aes(group = Metadata_Well,color = Metadata_dose), size = 2)
     + scale_color_manual(values = color_pallete_for_dose)
     + labs(
         x = "Time (minutes)",
