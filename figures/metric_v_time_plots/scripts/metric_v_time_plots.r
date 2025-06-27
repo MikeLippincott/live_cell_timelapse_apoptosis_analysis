@@ -13,7 +13,7 @@ for (pkg in packages) {
 }
 
 umap_file_path <- file.path(
-    "../../../3.generate_umaps/results/UMAP/CP_scDINO_umap.parquet"
+    "../../../3.generate_umap_and_PCA/results/UMAP/single-cell_profiles_CP_scDINO_umap.parquet"
 )
 mAP_file_path <- file.path(
     "../../../4.mAP_analysis/data/mAP/mAP_scores_CP_scDINO.parquet"
@@ -205,6 +205,26 @@ umap_df_centroids <- umap_df %>% group_by(Metadata_dose, Metadata_Time) %>% summ
     UMAP1_centroid = mean(UMAP_1)
 )
 umap_df_centroids$Metadata_Time <- as.numeric(gsub(" min", "", umap_df_centroids$Metadata_Time))
+umap_df_centroids$Metadata_dose_w_unit <- paste0(
+    umap_df_centroids$Metadata_dose,
+    " nM"
+)
+umap_df_centroids$Metadata_dose_w_unit <- as.character(umap_df_centroids$Metadata_dose_w_unit)
+umap_df_centroids$Metadata_dose_w_unit <- factor(
+    umap_df_centroids$Metadata_dose_w_unit,
+    levels = c(
+        '0.0 nM',
+        '0.61 nM',
+        '1.22 nM',
+        '2.44 nM',
+        '4.88 nM',
+        '9.77 nM',
+        '19.53 nM',
+        '39.06 nM',
+        '78.13 nM',
+        '156.25 nM'
+    )
+)
 
 
 width <- 15
@@ -232,12 +252,12 @@ umap_centroid_plot <- (
         )
     )
     + theme(
-        strip.text.x = element_text(size = 24),
-        strip.text.y = element_text(size = 24),
-        axis.text.x = element_text(size = 24),
-        axis.text.y = element_text(size = 24),
-        axis.title.x = element_text(size = 24),
-        axis.title.y = element_text(size = 24),
+        strip.text.x = element_text(size = 20),
+        strip.text.y = element_text(size = 20),
+        axis.text.x = element_text(size = 20, angle = 45, hjust = 1),
+        axis.text.y = element_text(size = 20),
+        axis.title.x = element_text(size = 20),
+        axis.title.y = element_text(size = 20),
         axis.ticks.x = element_line(size = 1),
         axis.ticks.y = element_line(size = 1),
         legend.text = element_text(size = 24),
@@ -245,7 +265,7 @@ umap_centroid_plot <- (
         legend.title = element_text(size = 24, hjust = 0.5),
         plot.title = element_text(size = 24, hjust = 0.5)
         )
-    + facet_wrap(~Metadata_dose,nrow = 2)
+    + facet_wrap(~Metadata_dose_w_unit,nrow = 2)
 
 )
 umap_centroid_plot
