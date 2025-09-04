@@ -21,6 +21,9 @@ mAP_file_path <- file.path(
 cell_count_file_path <- file.path(
     "../../../2.cell_tracks_data/data/combined_stats.parquet"
 )
+pca_file_path <- file.path(
+    "../../../3.generate_umap_and_PCA/results/pca/single-cell_profiles_CP_scDINO_pca.parquet"
+)
 
 # final figure path
 figures_path <- file.path("../figures")
@@ -35,6 +38,7 @@ final_figure_path <- file.path(
 umap_df <- arrow::read_parquet(umap_file_path)
 mAP_df <- arrow::read_parquet(mAP_file_path)
 cell_count_df <- arrow::read_parquet(cell_count_file_path)
+pca_df <- arrow::read_parquet(pca_file_path)
 
 
 color_pallete_for_dose <- c(
@@ -83,9 +87,43 @@ mAP_df$Metadata_dose <- factor(
         '156.25'
     )
 )
+cell_count_df$Metadata_dose <- as.character(cell_count_df$Metadata_dose)
+cell_count_df$Metadata_dose <- factor(
+    cell_count_df$Metadata_dose,
+    levels = c(
+        '0',
+        '0.61',
+        '1.22',
+        '2.44',
+        '4.88',
+        '9.77',
+        '19.53',
+        '39.06',
+        '78.13',
+        '156.25'
+    )
+)
+pca_df$Metadata_dose <- as.character(pca_df$Metadata_dose)
+pca_df$Metadata_dose <- factor(
+    pca_df$Metadata_dose,
+    levels = c(
+        '0.0',
+        '0.61',
+        '1.22',
+        '2.44',
+        '4.88',
+        '9.77',
+        '19.53',
+        '39.06',
+        '78.13',
+        '156.25'
+    )
+)
 umap_df$Metadata_Time <- as.numeric(umap_df$Metadata_Time) * 30
 mAP_df$Metadata_Time <- as.numeric(mAP_df$Metadata_Time) * 30
-cell_count_df$Metadata_time <- as.numeric(cell_count_df$Metadata_time) * 30
+cell_count_df$Metadata_Time <- as.numeric(cell_count_df$Metadata_Time) * 30
+pca_df$Metadata_Time <- as.numeric(pca_df$Metadata_Time) * 30
+
 
 font_size <- 24
 plot_themes <- (
@@ -271,6 +309,56 @@ umap_centroid_plot <- (
 umap_centroid_plot
 
 
+pca_df$Metadata_Time <- as.numeric(gsub(" min", "", pca_df$Metadata_Time))
+pca_df$Metadata_dose_w_unit <- paste0(
+    pca_df$Metadata_dose,
+    " nM"
+)
+pca_df$Metadata_dose_w_unit <- as.character(pca_df$Metadata_dose_w_unit)
+pca_df$Metadata_dose_w_unit <- factor(
+    pca_df$Metadata_dose_w_unit,
+    levels = c(
+        '0.0 nM',
+        '0.61 nM',
+        '1.22 nM',
+        '2.44 nM',
+        '4.88 nM',
+        '9.77 nM',
+        '19.53 nM',
+        '39.06 nM',
+        '78.13 nM',
+        '156.25 nM'
+    )
+)
+
+pca_plot_facet <- (
+    ggplot(data = pca_df, aes(x = PCA0, y = PCA1))
+    + geom_point(aes(color = Metadata_Time), size = 0.5, alpha = 0.5)
+    + scale_color_gradientn(
+        colors = temporal_palette,
+        breaks = c(0, 180, 360), # breaks at 0, 90, and 360 minutes
+        labels = c("0 min", "180 min", "360 min")
+    )
+    + labs(
+        x = "PCA 0",
+        y = "PCA 1",
+        color = "Time (minutes)",
+    )
+    # change the x scale
+    + scale_x_continuous(breaks = seq(-150, 150, 50))
+    + facet_wrap(Metadata_dose_w_unit~., nrow = 2)
+    + guides(
+        color = guide_colorbar(
+            title.position = "top",
+            title.hjust = 0.5,
+            title.theme = element_text(size = 16),
+            # make the legend longer
+            barwidth = 20,
+        ))
+    + plot_themes
+    )
+pca_plot_facet
+
 # get the well from the well_fov column, get the first part of the string
 # before the underscore and number
 cell_count_df$well <- sub("_.*", "", cell_count_df$well_fov)
@@ -281,46 +369,41 @@ well_dose_df <- umap_df %>%
 # map the well to the dose in the cell_count_df
 cell_count_df <- cell_count_df %>%
     left_join(well_dose_df, by = "well")
-# rename dose to Metadata_dose
-cell_count_df <- cell_count_df %>%
-    rename(Metadata_dose = dose) %>%
-    rename(Metadata_Well = well)
-cell_count_df$Metadata_dose <- as.character(cell_count_df$Metadata_dose)
-cell_count_df$Metadata_dose <- factor(
-    cell_count_df$Metadata_dose,
-    levels = c(
-        '0.0',
-        '0.61',
-        '1.22',
-        '2.44',
-        '4.88',
-        '9.77',
-        '19.53',
-        '39.06',
-        '78.13',
-        '156.25'
-    )
-)
+# get the metadata well columnd from the well_fov column
+cell_count_df$Metadata_Well <- sub("_.*", "", cell_count_df$well_fov)
+# convert dose to factor
+
+
+cell_count_df
 
 # get the counts of cells per timepoint per well
 cell_count_df <- cell_count_df %>%
-    group_by(Metadata_time, Metadata_Well, Metadata_dose) %>%
+    group_by(Metadata_Time, Metadata_Well, Metadata_dose) %>%
     summarise(
         cell_count = sum(total_CP_cells),
         .groups = "drop"
     )
 
+# # normalize each well's cell count to the first timepoint
+# # cell_count_norm_df <-
+# cell_count_df %>%
+#     group_by(Metadata_Well, Metadata_dose, Metadata_time) %>%
+#     mutate(
+#         cell_count_norm = cell_count / cell_count[Metadata_time == 0]
+#     ) %>%
+#     ungroup()
+# normalize each well's cell count to the first timepoint (only keep wells with timepoint 0)
 # normalize each well's cell count to the first timepoint
 cell_count_norm_df <- cell_count_df %>%
     group_by(Metadata_Well, Metadata_dose) %>%
     mutate(
-        cell_count_norm = cell_count / cell_count[Metadata_time == 0]
+        baseline_count = first(cell_count[Metadata_Time == min(Metadata_Time)]),
+        cell_count_norm = cell_count / baseline_count
     ) %>%
-    ungroup()
-
+    select(-baseline_count)
 
 cell_count_v_time_plot_colored_by_dose <- (
-    ggplot(data = cell_count_df, aes(x = Metadata_time, y = cell_count))
+    ggplot(data = cell_count_df, aes(x = Metadata_Time, y = cell_count))
     + geom_line(aes(group = Metadata_Well,color = Metadata_dose), size = 2)
     + scale_color_manual(values = color_pallete_for_dose)
     + labs(
@@ -334,7 +417,7 @@ cell_count_v_time_plot_colored_by_dose <- (
 cell_count_v_time_plot_colored_by_dose
 
 normalized_cell_count_v_time_plot_colored_by_dose <- (
-    ggplot(data = cell_count_norm_df, aes(x = Metadata_time, y = cell_count_norm))
+    ggplot(data = cell_count_norm_df, aes(x = Metadata_Time, y = cell_count_norm))
     + geom_line(aes(group = Metadata_Well,color = Metadata_dose), size = 2)
     + scale_color_manual(values = color_pallete_for_dose)
     + labs(
@@ -361,10 +444,9 @@ layout <- c(
 )
 metric_v_time_final_plot <- (
     umap_centroid_plot
-    + mAP_plot
-
+    + pca_plot_facet
     + cell_count_v_time_plot_colored_by_dose
-    + normalized_cell_count_v_time_plot_colored_by_dose
+    + mAP_plot
 
     + plot_layout(design = layout, widths = c(0.6, 1))
     # make bottom plot not align
