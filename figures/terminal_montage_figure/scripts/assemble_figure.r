@@ -186,7 +186,6 @@ umap_plot <- (
             title.hjust = 0.5,
             # make them horizontal
             nrow = 3,
-
         )
     )
 
@@ -209,16 +208,14 @@ final_plot <- (
     + plot_layout(
         design = layout,
         heights = c(1, 1),  # montage gets 2x height of bottom row
-        # widths = c(2, 2),   # adjust for two columns in bottom row
-        # guides = "collect"
+
     )
     + plot_annotation(tag_levels = 'A')
     & theme(
         plot.tag = element_text(size = 24, face = "bold",hjust = 0.5, vjust = 1),
-        # plot.margin = margin(0, 0, 0, 0)
     )
 )
-# png(filename = "../figures/terminal_montage_figure.png", width = width, height = height, units = "in", res = dpi)
-# final_plot
-# dev.off()
+png(filename = "../figures/terminal_montage_figure.png", width = width, height = height, units = "in", res = dpi)
+final_plot
+dev.off()
 final_plot
