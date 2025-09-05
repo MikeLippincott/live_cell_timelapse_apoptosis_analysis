@@ -127,46 +127,16 @@ print(
     f"test_shuffled_X shape: {test_shuffled_X.shape}, test_shuffled_y shape: {test_shuffled_y.shape}"
 )
 
+feature_columns = train_y.columns.tolist()
+
 
 # In[4]:
 
 
-model_features = [
-    "Terminal_Cytoplasm_Intensity_MaxIntensity_AnnexinV",
-    "Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV",
-]
+single_feature = "Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV"
 
 
 # In[5]:
-
-
-dict_of_train_tests = {
-    "train": {
-        "X": train_X,
-        "y": train_y,
-        "metadata": train_metadata,
-    },
-    "train_shuffled": {
-        "X": train_shuffled_X,
-        "y": train_shuffled_y,
-        "metadata": train_metadata_shuffled,
-    },
-    "test": {
-        "X": test_X,
-        "y": test_y,
-        "metadata": test_metadata,
-    },
-    "test_shuffled": {
-        "X": test_shuffled_X,
-        "y": test_shuffled_y,
-        "metadata": test_metadata_shuffled,
-    },
-}
-
-
-# ## Model training
-
-# In[6]:
 
 
 # Define cross-validation strategy
@@ -174,7 +144,111 @@ cv = KFold(n_splits=5, shuffle=True, random_state=0)  # 5-fold cross-validation
 # elastic net parameters
 elastic_net_params = {
     "alpha": [0.1, 1.0, 10.0, 100.0, 1000.0],  # Regularization strength
-    "l1_ratio": [0.1, 0.25, 0.5],  # l1_ratio = 1.0 is Lasso
+    "l1_ratio": [0.1, 0.25, 0.5, 0.75, 1.0],  # l1_ratio = 1.0 is Lasso
+    "max_iter": 10000,  # Increase max_iter for convergence
+}
+elastic_net_all_annexinv_features_model = MultiOutputRegressor(
+    ElasticNetCV(
+        alphas=elastic_net_params["alpha"],
+        l1_ratio=elastic_net_params["l1_ratio"],
+        cv=cv,
+        random_state=0,
+        max_iter=elastic_net_params["max_iter"],
+    )
+)
+elastic_net_all_annexinv_features_model_shuffled = (
+    elastic_net_all_annexinv_features_model
+)
+elastic_net_single_terminal_features_model = ElasticNetCV(
+    alphas=elastic_net_params["alpha"],
+    l1_ratio=elastic_net_params["l1_ratio"],
+    cv=cv,
+    random_state=0,
+    max_iter=elastic_net_params["max_iter"],
+)
+elastic_net_single_terminal_features_model_shuffled = (
+    elastic_net_single_terminal_features_model
+)
+
+
+# In[6]:
+
+
+dict_of_train_tests = {
+    "single_feature": {
+        "train": {
+            "X": train_X,
+            "y": train_y[single_feature],
+            "metadata": train_metadata,
+            "model": elastic_net_single_terminal_features_model,
+            "model_name": "elastic_net_single_terminal_features_model",
+        },
+        "train_shuffled": {
+            "X": train_shuffled_X,
+            "y": train_shuffled_y[single_feature],
+            "metadata": train_metadata_shuffled,
+            "model": elastic_net_single_terminal_features_model_shuffled,
+            "model_name": "elastic_net_single_terminal_features_model_shuffled",
+        },
+        "test": {
+            "X": test_X,
+            "y": test_y[single_feature],
+            "metadata": test_metadata,
+            "model": elastic_net_single_terminal_features_model,
+            "model_name": "elastic_net_single_terminal_features_model",
+        },
+        "test_shuffled": {
+            "X": test_shuffled_X,
+            "y": test_shuffled_y[single_feature],
+            "metadata": test_metadata_shuffled,
+            "model": elastic_net_single_terminal_features_model_shuffled,
+            "model_name": "elastic_net_single_terminal_features_model_shuffled",
+        },
+    },
+    "annexinV_features": {
+        "train": {
+            "X": train_X,
+            "y": train_y,
+            "metadata": train_metadata,
+            "model": elastic_net_all_annexinv_features_model,
+            "model_name": "elastic_net_all_annexinv_features_model",
+        },
+        "train_shuffled": {
+            "X": train_shuffled_X,
+            "y": train_shuffled_y,
+            "metadata": train_metadata_shuffled,
+            "model": elastic_net_all_annexinv_features_model_shuffled,
+            "model_name": "elastic_net_all_annexinv_features_model_shuffled",
+        },
+        "test": {
+            "X": test_X,
+            "y": test_y,
+            "metadata": test_metadata,
+            "model": elastic_net_all_annexinv_features_model,
+            "model_name": "elastic_net_all_annexinv_features_model",
+        },
+        "test_shuffled": {
+            "X": test_shuffled_X,
+            "y": test_shuffled_y,
+            "metadata": test_metadata_shuffled,
+            "model": elastic_net_all_annexinv_features_model_shuffled,
+            "model_name": "elastic_net_all_annexinv_features_model_shuffled",
+        },
+    },
+}
+
+
+# ## Model training
+
+# In[7]:
+
+
+# Define cross-validation strategy
+cv = KFold(n_splits=5, shuffle=True, random_state=0)  # 5-fold cross-validation
+# elastic net parameters
+elastic_net_params = {
+    "alpha": [0.1, 1.0, 10.0, 100.0, 1000.0],  # Regularization strength
+    "l1_ratio": [0.1, 0.25, 0.5, 0.75, 1.0],  # l1_ratio = 1.0 is Lasso
     "max_iter": 10000,  # Increase max_iter for convergence
 }
 elastic_net_all_terminal_features_model = MultiOutputRegressor(
@@ -196,86 +270,80 @@ elastic_net_single_terminal_features_model = ElasticNetCV(
 )
 
 # train the model
-for train_test_key, train_test_data in tqdm.tqdm(dict_of_train_tests.items()):
-    if "test" in train_test_key:
-        print(f"Skipping {train_test_key} as it is a test set.")
-        continue
-    X = train_test_data["X"]
-    y = train_test_data["y"]
-    metadata = train_test_data["metadata"]
-
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", category=ConvergenceWarning)
-        elastic_net_all_terminal_features_model.fit(X, y)
-
-    # save the model
-    model_path = (
-        model_dir / f"{train_test_key}_elastic_net_model_all_terminal_features.joblib"
-    )
-    joblib.dump(elastic_net_all_terminal_features_model, model_path)
-    dict_of_train_tests[train_test_key]["model_path"] = model_path
-
-    for single_feature in model_features:
-        # Fit the model with a single terminal feature
-        y_single_feature = y[[single_feature]]
-
+for model_type in dict_of_train_tests.keys():
+    for train_test_key, train_test_data in tqdm.tqdm(
+        dict_of_train_tests[model_type].items()
+    ):
+        if "test" in train_test_key:
+            print(f"Skipping {train_test_key} as it is a test set.")
+            continue
+        print(f"Training model for {train_test_key}...{model_type}")
+        X = train_test_data["X"]
+        y = train_test_data["y"]
+        metadata = train_test_data["metadata"]
+        print(
+            f"X shape: {X.shape}, y shape: {y.shape}, metadata shape: {metadata.shape}"
+        )
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=ConvergenceWarning)
-            elastic_net_single_terminal_features_model.fit(X, y_single_feature)
+            train_test_data["model"].fit(X, y)
 
-        # Save the model
-        single_feature_model_path = (
-            model_dir
-            / f"{train_test_key}_elastic_net_model_singlefeature_{single_feature}.joblib"
+        # save the model
+        model_path = (
+            model_dir / f"{train_test_key}_{train_test_data['model_name']}.joblib"
         )
-        joblib.dump(
-            elastic_net_single_terminal_features_model, single_feature_model_path
-        )
-        dict_of_train_tests[train_test_key][
-            f"model_path_{single_feature}"
-        ] = single_feature_model_path
-
-
-# In[7]:
-
-
-# test the model
-for train_test_key, train_test_data in tqdm.tqdm(dict_of_train_tests.items()):
-    if "train" in train_test_key:
-        print(f"Skipping {train_test_key} as it is a training set.")
-        continue
-    X = train_test_data["X"]
-    y = train_test_data["y"]
-    metadata = train_test_data["metadata"]
-    if "shuffled" in train_test_key:
-        model_path = dict_of_train_tests["train_shuffled"]["model_path"]
-    else:
-        model_path = dict_of_train_tests["train"]["model_path"]
-
-    # load the model
-    model = joblib.load(model_path)
-
-    # make predictions
-    y_pred = model.predict(X)
-
-    alphas = model.estimators_[0].alpha_
-    l1_ratios = model.estimators_[0].l1_ratio_
-    print(f"Model parameters for {train_test_key}:")
-    print(f"Alphas: {alphas}, L1 Ratios: {l1_ratios}")
-
-    # calculate metrics
-    metrics = {
-        "explained_variance": explained_variance_score(y, y_pred),
-        "mean_absolute_error": mean_absolute_error(y, y_pred),
-        "mean_squared_error": mean_squared_error(y, y_pred),
-        "r2_score": r2_score(y, y_pred),
-    }
+        joblib.dump(train_test_data["model"], model_path)
+        dict_of_train_tests[model_type][train_test_key]["model_path"] = model_path
 
 
 # In[8]:
 
 
-terminal_columns_file_path = results_dir / "terminal_columns.txt"
-with open(terminal_columns_file_path, "w") as f:
-    for col in terminal_columns:
+# test the model
+for model_type in dict_of_train_tests.keys():
+    for train_test_key, train_test_data in tqdm.tqdm(
+        dict_of_train_tests[model_type].items()
+    ):
+        if "train" in train_test_key:
+            print(f"Skipping {train_test_key} as it is a training set.")
+            continue
+        print(model_type, train_test_key)
+        X = train_test_data["X"]
+        y = train_test_data["y"]
+        metadata = train_test_data["metadata"]
+        if "shuffled" in train_test_key:
+            model_path = dict_of_train_tests[model_type]["train_shuffled"]["model_path"]
+        else:
+            model_path = dict_of_train_tests[model_type]["train"]["model_path"]
+
+        # load the model
+        model = joblib.load(model_path)
+
+        # make predictions
+        y_pred = model.predict(X)
+        if model_type == "single_feature":
+            model.alpha_
+            model.l1_ratio_
+        else:
+
+            alphas = model.estimators_[0].alpha_
+            l1_ratios = model.estimators_[0].l1_ratio_
+            print(f"Model parameters for {train_test_key}:")
+            print(f"Alphas: {alphas}, L1 Ratios: {l1_ratios}")
+
+        # calculate metrics
+        metrics = {
+            "explained_variance": explained_variance_score(y, y_pred),
+            "mean_absolute_error": mean_absolute_error(y, y_pred),
+            "mean_squared_error": mean_squared_error(y, y_pred),
+            "r2_score": r2_score(y, y_pred),
+        }
+
+
+# In[9]:
+
+
+# write the feature columns to a file
+with open("../results/terminal_columns.txt", "w") as f:
+    for col in feature_columns:
         f.write(f"{col}\n")

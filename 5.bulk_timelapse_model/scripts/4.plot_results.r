@@ -48,6 +48,7 @@ actual_results$shuffled <- "not_shuffled"
 # prepend Terminal to each non metadata column name
 actual_results <- actual_results %>%
   rename_with(~ paste0("Terminal_", .), -c(Metadata_Time, Metadata_dose, Metadata_Well, shuffled))
+actual_results$Metadata_shuffled <- "not_shuffled"
 
 columns_to_keep <- colnames(actual_results)
 
@@ -58,14 +59,27 @@ results <- arrow::read_parquet(results_file_path)
 
 subset_results <- results[, colnames(results) %in% columns_to_keep]
 
-
 # drop the singlecells, compound, and control columns
 actual_results <- actual_results %>%
-  select(-c(Terminal_Metadata_number_of_singlecells, Terminal_Metadata_plate, Terminal_Metadata_compound, Terminal_Metadata_control))
+  select(-c('Terminal_Metadata_number_of_singlecells','Terminal_Metadata_plate','Terminal_Metadata_compound','Terminal_Metadata_control'))
+metadata_columns <- colnames(actual_results)[
+  grepl("Metadata", colnames(actual_results)) &  # Contains "Metadata"
+  !grepl("Terminal", colnames(actual_results))
+]
+
+actual_results_single_annexinV <- actual_results %>%
+  select(c("Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV"))
+
+# rename metadata_shuffled to shuffled
+actual_results$shuffled <- actual_results$Metadata_shuffled
+actual_results_single_annexinV$shuffled <- actual_results$Metadata_shuffled
+actual_results$Metadata_shuffled <- NULL
+actual_results_single_annexinV$Metadata_shuffled <- NULL
 
 
 # merge the two dataframes on the columns "Metadata_Time" and "Metadata_dose" Metadata_Well
 merged_results <- rbind(subset_results,actual_results )
+# merged_results <- rbind(subset_results, actual_results)
 merged_results$Metadata_Time <- as.numeric(merged_results$Metadata_Time) * 30
 merged_results$Metadata_dose <- as.numeric(merged_results$Metadata_dose)
 merged_results$Metadata_dose <- factor(
@@ -122,7 +136,7 @@ merged_results <- merged_results %>%
 
 
 merged_results <- merged_results %>% arrange(Metadata_Well, Metadata_Time)
-
+head(merged_results)
 
 # get the pca of the results
 metadata_columns <- c("Metadata_Time", "Metadata_dose", "Metadata_Well", "shuffled", "Metadata_data_split")
@@ -131,27 +145,57 @@ pcadf <- merged_results[, !colnames(merged_results) %in% metadata_columns]
 pcadf <- pcadf[, sapply(pcadf, is.numeric)]  # keep only numeric columns
 pcadf <- pcadf[, apply(pcadf, 2, function(x) var(x, na.rm = TRUE) != 0)]
 
-head(pcadf)
-
 
 pca <- prcomp(pcadf, center = TRUE, rank. = 2, scale. = TRUE)
 # get the pca of the results
 pca_df <- data.frame(pca$x)
-pca_df$Metadata_Time <- merged_results$Metadata_Time
-pca_df$Metadata_dose <- merged_results$Metadata_dose
-pca_df$Metadata_Well <- merged_results$Metadata_Well
-pca_df$Metadata_data_split <- merged_results$Metadata_data_split
-pca_df$shuffled <- merged_results$shuffled
+# add the pca to the merged_results dataframe
+pca_df <- cbind(pca_df, merged_results[, metadata_columns])
+
+
+
+# pca_df$Metadata_Time <- merged_results$Metadata_Time
+# pca_df$Metadata_dose <- merged_results$Metadata_dose
+# pca_df$Metadata_Well <- merged_results$Metadata_Well
+# pca_df$Metadata_data_split <- merged_results$Metadata_data_split
+# pca_df$shuffled <- merged_results$shuffled
 pca_df$Metadata_Time <- as.double((pca_df$Metadata_Time))
 pca_df$Metadata_dose <- as.factor(pca_df$Metadata_dose)
 
 pca_df$PC1 <- as.numeric(pca_df$PC1)
+pca_df$PC2 <- as.numeric(pca_df$PC2)
 pca_df <- pca_df %>%
   mutate(Group = Metadata_Well) %>%
-  arrange(Metadata_Well, Metadata_Time)
-pca_df <- pca_df %>%
-  arrange(Metadata_Well, Metadata_Time)
+  arrange(Metadata_Well, Metadata_Time, shuffled)
+
 head(pca_df)
+
+# scree plot to see how many components to keep
+scree_data <- data.frame(
+    PC = 1:length(pca$sdev),
+    Variance = (pca$sdev)^2,
+    Proportion = (pca$sdev)^2 / sum((pca$sdev)^2)
+)
+scree_plot <- (
+    ggplot(scree_data, aes(x = PC, y = Variance, group = 1))
+    + geom_bar(stat = "identity", fill = "lightblue", color = "black")
+    + plot_themes
+    + labs(
+        title = "Scree plot",
+        x = "Principal Component",
+        y = "Variance"
+    )
+    + theme(
+        axis.text.x = element_text(angle = 90, hjust = 1)
+    )
+)
+scree_plot
+# zoom in on the first 25 components
+scree_plot_zoom <- (
+    scree_plot
+    + coord_cartesian(xlim = c(1, 25))
+)
+scree_plot_zoom
 
 width <- 10
 height <- 5
@@ -163,6 +207,7 @@ pca1_plot <- (
     + theme_minimal()
     + facet_grid(Metadata_data_split ~ shuffled)
     + geom_vline(xintercept = (30*12), linetype = "dashed", color = "black", size = 1)
+    + geom_hline(yintercept = 0, linetype = "dashed", color = "black", size = 1)
     + labs(x="Time (minutes)", y="PC1", color="Dose (nM)")
     + plot_themes
     + scale_color_manual(values = color_pallete_for_dose)
@@ -328,8 +373,6 @@ subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV$Metadat
 )
 
 
-head(subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV)
-
 # merged_results$Metadata_dose <- gsub('0', '0.0', merged_results$Metadata_dose)
 unique(subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV$Metadata_dose)
 subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV <- subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV %>%
@@ -375,7 +418,7 @@ Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV_plot <- (
     + facet_grid(Metadata_data_split ~ shuffled)
 
     + geom_vline(xintercept = (30*12), linetype = "dashed", color = "black", size = 1)
-    + geom_hline(yintercept = 0, linetype = "dashed", color = "black", size = 1)
+    + geom_hline(yintercept = -0.2, linetype = "dashed", color = "black", size = 1)
 
     + labs(x="Time (minutes)", y="AnnexinV Integrated Intensity\nin the Cytoplasm", color="Dose (nM)")
     + plot_themes
