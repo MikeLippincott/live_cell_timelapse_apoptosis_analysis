@@ -6,7 +6,6 @@
 # In[1]:
 
 
-import argparse
 import pathlib
 
 import numpy as np
@@ -16,16 +15,18 @@ import umap
 # In[2]:
 
 
-# set the arg parser
-parser = argparse.ArgumentParser(description="UMAP on a matrix")
+# # set the arg parser
+# parser = argparse.ArgumentParser(description="UMAP on a matrix")
 
-parser.add_argument("--data_mode", type=str, default="CP", help="data mode to use")
+# parser.add_argument("--data_mode", type=str, default="CP", help="data mode to use")
 
-# get the args
-args = parser.parse_args()
+# # get the args
+# args = parser.parse_args()
 
-# set data mode to either "CP" or "scDINO" or "combined"
-data_mode = args.data_mode
+# # set data mode to either "CP" or "scDINO" or "combined" or "terminal"
+# data_mode = args.data_mode
+
+data_mode = "terminal"
 
 
 # In[ ]:
@@ -38,12 +39,19 @@ CP_fs_sc_profiles_path = pathlib.Path(
 combined_profiles_path = pathlib.Path(
     "../../data/CP_scDINO_features/combined_CP_scDINO_norm_fs.parquet"
 ).resolve(strict=True)
+scDINO_fs_profiles_path = pathlib.Path(
+    "../../data/scDINO/CLS_features_annotated_normalized_feature_selected.parquet"
+).resolve(strict=True)
 
-output_path = pathlib.Path(f"../../data/umap/").resolve()
+CP_endpoint_profiles_path = pathlib.Path(
+    "../../data/CP_feature_select/endpoints/features_selected_profile.parquet"
+).resolve(strict=True)
+
+output_path = pathlib.Path("../../data/umap/").resolve()
 output_path.mkdir(parents=True, exist_ok=True)
 
 
-# In[ ]:
+# In[4]:
 
 
 if data_mode == "CP":
@@ -52,6 +60,12 @@ if data_mode == "CP":
 elif data_mode == "combined":
     # read the data
     profiles_df = pd.read_parquet(combined_profiles_path)
+elif data_mode == "scDINO":
+    # read the data
+    profiles_df = pd.read_parquet(scDINO_fs_profiles_path)
+elif data_mode == "terminal":
+    # read the data
+    profiles_df = pd.read_parquet(CP_endpoint_profiles_path)
 else:
     raise ValueError("data_mode must be either 'CP' or 'scDINO' or 'combined'")
 print(profiles_df.shape)
@@ -60,7 +74,7 @@ pd.set_option("display.max_columns", None)
 profiles_df.head()
 
 
-# In[4]:
+# In[5]:
 
 
 # filter the data and drop nan values
@@ -72,7 +86,7 @@ profiles_df = profiles_df.dropna(
 print(profiles_df.shape)
 
 
-# In[5]:
+# In[6]:
 
 
 # get the metadata columns
@@ -108,7 +122,7 @@ print(umap_df.shape)
 umap_df.head()
 
 
-# In[ ]:
+# In[7]:
 
 
 # save the umap dataframe
