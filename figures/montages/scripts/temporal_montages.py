@@ -56,13 +56,13 @@ def make_composite_image(
     Parameters
     ----------
     image1_path : pathlib.Path
-        Path to the first image (488_1).
+        Path to the first image (488_1). Represents the yellow channel.
     image2_path : pathlib.Path
-        Path to the second image (488_2).
+        Path to the second image (488_2). Represents the green channel.
     image3_path : pathlib.Path
-        Path to the third image (561).
+        Path to the third image (561). Represents the magenta channel.
     image4_path : pathlib.Path
-        Path to the fourth image (DNA).
+        Path to the fourth image (DNA). Represents the cyan channel.
 
     Returns
     -------
