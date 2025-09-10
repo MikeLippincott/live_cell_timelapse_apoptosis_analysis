@@ -295,22 +295,6 @@ for background in ["white", "black"]:
         plt.rcParams["text.color"] = "white"
     for index, row in c02_df.iterrows():
         if index == 0:
-            plt.subplot(12, len(c02_df) + 1, index + 1)
-            plt.text(0.5, 0.5, "", fontsize=14, ha="center", va="center")
-            plt.axis("off")
-            plt.subplot(12, len(c02_df) + 1, index + 2)
-            plt.text(
-                0.5, 0.5, f"{row['time']}\nmin", fontsize=14, ha="center", va="center"
-            )
-            plt.axis("off")
-        else:
-            plt.subplot(12, len(c02_df) + 1, index + 2)
-            plt.text(
-                0.5, 0.5, f"{row['time']}\nmin", fontsize=14, ha="center", va="center"
-            )
-            plt.axis("off")
-    for index, row in c02_df.iterrows():
-        if index == 0:
             plt.subplot(12, len(c02_df) + 1, index + len(c02_df) + 2)
             plt.text(
                 0.5, 0.5, f"{row['dose']} nM", fontsize=14, ha="center", va="center"
@@ -318,9 +302,12 @@ for background in ["white", "black"]:
             plt.axis("off")
             plt.subplot(12, len(c02_df) + 1, index + len(c02_df) + 3)
             plt.imshow(row["composite"])
+            plt.title(f"{row['time']} min", fontsize=14)
         else:
             plt.subplot(12, len(c02_df) + 1, index + len(c02_df) + 3)
             plt.imshow(row["composite"])
+            plt.title(f"{row['time']} min", fontsize=14)
+
         plt.axis("off")
     for index, row in c03_df.iterrows():
         if index == 0:
@@ -477,22 +464,6 @@ for background in ["white", "black"]:
         plt.rcParams["text.color"] = "white"
     for index, row in c02_df.iterrows():
         if index == 0:
-            plt.subplot(6, len(c02_df) + 1, index + 1)
-            plt.text(0.5, 0.5, "", fontsize=14, ha="center", va="center")
-            plt.axis("off")
-            plt.subplot(6, len(c02_df) + 1, index + 2)
-            plt.text(
-                0.5, 0.5, f"{row['time']}\nmin", fontsize=14, ha="center", va="center"
-            )
-            plt.axis("off")
-        else:
-            plt.subplot(6, len(c02_df) + 1, index + 2)
-            plt.text(
-                0.5, 0.5, f"{row['time']}\nmin", fontsize=14, ha="center", va="center"
-            )
-            plt.axis("off")
-    for index, row in c02_df.iterrows():
-        if index == 0:
             plt.subplot(6, len(c02_df) + 1, index + len(c02_df) + 2)
             plt.text(
                 0.5, 0.5, f"{row['dose']} nM", fontsize=14, ha="center", va="center"
@@ -500,9 +471,11 @@ for background in ["white", "black"]:
             plt.axis("off")
             plt.subplot(6, len(c02_df) + 1, index + len(c02_df) + 3)
             plt.imshow(row["composite"])
+            plt.title(f"{row['time']} min", fontsize=14)
         else:
             plt.subplot(6, len(c02_df) + 1, index + len(c02_df) + 3)
             plt.imshow(row["composite"])
+            plt.title(f"{row['time']} min", fontsize=14)
         plt.axis("off")
     for index, row in c06_df.iterrows():
         if index == 0:

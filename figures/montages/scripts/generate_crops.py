@@ -27,7 +27,7 @@ else:
 radius = 75  # pixels to expand around centroid for crop
 
 
-# In[3]:
+# In[ ]:
 
 
 def crop_image(
@@ -37,7 +37,29 @@ def crop_image(
     y_center: int,
     radius: int = 50,
 ) -> Tuple[int, int, int]:
-    """ """
+    """
+    Crop a square region from a larger image centered at (x_center, y_center) with given radius.
+
+    Parameters
+    ----------
+    image_input_path : pathlib.Path
+        The image to crop from as a path
+    image_output_path : pathlib.Path
+        The path to save the cropped image
+    x_center : int
+        The x-coordinate of the center of the crop
+    y_center : int
+        The y-coordinate of the center of the crop
+    radius : int, optional
+        The radius of the crop. Note this is radius from the x,y center.
+        Also not a true radius but you get the point, by default 50
+
+    Returns
+    -------
+    Tuple[int, int, int]
+        A tuple of (omitted_count, successful_count, total_count)
+        This indicates whether the crop was successful or omitted due to being an edge case.
+    """
     omitted_count, successful_count, total_count = 0, 0, 1
     image = tifffile.imread(image_input_path)
 
@@ -125,18 +147,6 @@ df["Metadata_parent_path"] = df["Metadata_Image_PathName_CL_488_2"].apply(
     lambda x: f"{input_file_parent_path}{x.split('live_cell_timelapse_apoptosis')[1]}"
 )
 df.to_parquet(single_cell_profiles, index=False)
-
-
-# In[ ]:
-
-
-# In[ ]:
-
-
-# In[ ]:
-
-
-# In[ ]:
 
 
 # In[7]:
