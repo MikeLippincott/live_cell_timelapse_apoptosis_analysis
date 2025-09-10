@@ -1,0 +1,21 @@
+name: dynaviz_env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - jupyter
+  - ipykernel
+  - pre-commit
+  - black
+  - pyarrow
+  - seaborn
+  - matplotlib
+  - pytoml
+  - dash
+  - jupyter-dash
+  - tifffile
+  - pip:
+    - kaleido
+    - pycytominer
+    - plotly
