@@ -237,7 +237,7 @@ umap_df["Metadata_Well_FOV"] = (
 # In[4]:
 
 
-# get a random Metadata_track_id for a few wells
+# get a random Metadata_track_id for a well per dose
 well_fovs = umap_df["Metadata_Well_FOV"].unique()
 # for each well we will find a Metadata_track_id that has
 # all time points
