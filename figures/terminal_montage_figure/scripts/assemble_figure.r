@@ -159,7 +159,7 @@ height <- 8
 options(repr.plot.width = width, repr.plot.height = height)
 umap_plot <- (
     ggplot(data = umap_df, aes(x = UMAP0, y = UMAP1, color = Metadata_dose))
-    + geom_point(size = 0.9, alpha = 0.8)
+    + geom_point(size = 0.9, alpha = 0.5)
     + theme_bw()
 
     + labs( x = "UMAP0", y = "UMAP1")
@@ -191,7 +191,7 @@ umap_plot <- (
 
 
 )
-
+umap_plot
 
 width <- 14
 height <- 12

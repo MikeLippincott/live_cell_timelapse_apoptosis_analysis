@@ -6,27 +6,26 @@
 # In[1]:
 
 
+import argparse
 import pathlib
 
 import numpy as np
 import pandas as pd
 import umap
 
-# In[2]:
+# In[ ]:
 
 
-# # set the arg parser
-# parser = argparse.ArgumentParser(description="UMAP on a matrix")
+# set the arg parser
+parser = argparse.ArgumentParser(description="UMAP on a matrix")
 
-# parser.add_argument("--data_mode", type=str, default="CP", help="data mode to use")
+parser.add_argument("--data_mode", type=str, default="CP", help="data mode to use")
 
-# # get the args
-# args = parser.parse_args()
+# get the args
+args = parser.parse_args()
 
-# # set data mode to either "CP" or "scDINO" or "combined" or "terminal"
-# data_mode = args.data_mode
-
-data_mode = "terminal"
+# set data mode to either "CP" or "scDINO" or "combined" or "terminal"
+data_mode = args.data_mode
 
 
 # In[ ]:
