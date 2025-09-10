@@ -12,6 +12,7 @@ cd scripts || exit
 # run the EDA script
 python 0.generate_umap_embeddings.py --data_mode "CP"
 python 0.generate_umap_embeddings.py --data_mode "combined"
+python 0.generate_umap_embeddings.py --data_mode "scDINO"
 
 # deactivate the conda environment
 conda deactivate
@@ -20,6 +21,7 @@ conda activate R_timelapse_env
 
 Rscript 1.visualize_umaps.r --data_mode "CP"
 Rscript 1.visualize_umaps.r --data_mode "combined"
+Rscript 1.visualize_umaps.r --data_mode "scDINO"
 
 conda deactivate
 
