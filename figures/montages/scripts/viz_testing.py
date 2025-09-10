@@ -113,7 +113,7 @@ umap_df["Metadata_Time"] = umap_df["Metadata_Time"].astype(int)
 umap_df["Metadata_Time"] = umap_df["Metadata_Time"] * 30
 
 
-# In[1]:
+# In[ ]:
 
 
 # Make scatter plot with time slider
@@ -472,7 +472,3 @@ def display_composite_image(
 
 if __name__ == "__main__":
     app.run(jupyter_mode="external")
-    # app.run(mode='inline')
-
-
-# In[ ]:

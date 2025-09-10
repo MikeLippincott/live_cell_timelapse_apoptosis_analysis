@@ -56,13 +56,13 @@ def make_composite_image(
     Parameters
     ----------
     image1_path : pathlib.Path
-        Path to the first image (488_1). Represents the yellow channel.
+        Path to the first image (488_1).
     image2_path : pathlib.Path
-        Path to the second image (488_2). Represents the green channel.
+        Path to the second image (488_2).
     image3_path : pathlib.Path
-        Path to the third image (561). Represents the magenta channel.
+        Path to the third image (561).
     image4_path : pathlib.Path
-        Path to the fourth image (DNA). Represents the cyan channel.
+        Path to the fourth image (DNA).
 
     Returns
     -------
@@ -84,6 +84,8 @@ def make_composite_image(
     image2 = normalize_image(image2)  # 488_2
     image3 = normalize_image(image3)  # 561
     image4 = normalize_image(image4)  # DNA
+    # merge 488_1 and 488_2 into a single green channel by taking the max
+    image1 = np.maximum(image1, image2)
     # make a cyan, magenta, yellow composite
     # cyan = green + blue
     # magenta = red + blue
@@ -131,7 +133,7 @@ def scale_image(image: PIL.Image.Image, scale_factor: int = 4) -> PIL.Image.Imag
     return image.resize(new_size, Image.NEAREST)
 
 
-def generate_image_panel_df(
+def generate_image_pannel_df(
     df: pd.DataFrame, well_fov: str, cell_id: int
 ) -> pd.DataFrame:
     """
@@ -237,7 +239,7 @@ umap_df["Metadata_Well_FOV"] = (
 # In[4]:
 
 
-# get a random Metadata_track_id for a well per dose
+# get a random Metadata_track_id for a few wells
 well_fovs = umap_df["Metadata_Well_FOV"].unique()
 # for each well we will find a Metadata_track_id that has
 # all time points
