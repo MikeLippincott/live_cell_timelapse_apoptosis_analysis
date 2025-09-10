@@ -2,16 +2,17 @@ suppressPackageStartupMessages(suppressWarnings(library(ggplot2)))
 suppressPackageStartupMessages(suppressWarnings(library(dplyr)))
 suppressPackageStartupMessages(suppressWarnings(library(argparse)))
 
-# Create an ArgumentParser object
-parser <- ArgumentParser(description = "UMAP Visualization Script")
+# # Create an ArgumentParser object
+# parser <- ArgumentParser(description = "UMAP Visualization Script")
 
-# Define the arguments
-parser$add_argument("--data_mode", type = "character", help = "data to plot", required = TRUE)
-# Parse the arguments
-args <- parser$parse_args()
+# # Define the arguments
+# parser$add_argument("--data_mode", type = "character", help = "data to plot", required = TRUE)
+# # Parse the arguments
+# args <- parser$parse_args()
 
-data_mode <- args$data_mode
+# data_mode <- args$data_mode
 
+data_mode <- "CP"
 
 # set paths
 umap_file_path <- file.path("../../data/umap/",paste0(data_mode,"_umap_transformed.parquet"))
@@ -26,9 +27,10 @@ umap_df <- arrow::read_parquet(umap_file_path)
 
 head(umap_df,1)
 
+unique(umap_df$Metadata_dose)
+
 # add nM to the dose column
 umap_df$Metadata_dose <- paste0(umap_df$Metadata_dose, " nM")
-
 # make the dose a factor with levels
 umap_df$Metadata_dose <- factor(umap_df$Metadata_dose, levels = c(
     "0 nM",
@@ -156,7 +158,7 @@ ggsave(paste0("../figures/",data_mode,"/umap_centroid_plot.png"), plot = umap_ce
 
 
 # get the first two, middle, and last two doses
-dose_levels <- c("0 nM", "0.61 nM", "9.77 nM",  "78.13 nM", "156.25 nM")
+dose_levels <- c("0.0 nM", "0.61 nM", "9.77 nM",  "78.13 nM", "156.25 nM")
 umap_df <- umap_df %>% filter(Metadata_dose %in% dose_levels)
 
 # make a ggplot of the umap
