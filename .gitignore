@@ -6,7 +6,7 @@ __pycache__/
 data/
 0.EDA/scripts/Rplots.pdf
 4.mAP_analysis/data/*
-3.generate_umap_and_PCA/results
+3.generate_umap_and_PCA/results/*
 one_off_analysis/results/*
 
 5.bulk_timelapse_model/models/*
