@@ -131,7 +131,7 @@ def scale_image(image: PIL.Image.Image, scale_factor: int = 4) -> PIL.Image.Imag
     return image.resize(new_size, Image.NEAREST)
 
 
-def generate_image_pannel_df(
+def generate_image_panel_df(
     df: pd.DataFrame, well_fov: str, cell_id: int
 ) -> pd.DataFrame:
     """
