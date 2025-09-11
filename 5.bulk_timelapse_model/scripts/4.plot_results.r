@@ -79,7 +79,6 @@ actual_results_single_annexinV$Metadata_shuffled <- NULL
 
 # merge the two dataframes on the columns "Metadata_Time" and "Metadata_dose" Metadata_Well
 merged_results <- rbind(subset_results,actual_results )
-# merged_results <- rbind(subset_results, actual_results)
 merged_results$Metadata_Time <- as.numeric(merged_results$Metadata_Time) * 30
 merged_results$Metadata_dose <- as.numeric(merged_results$Metadata_dose)
 merged_results$Metadata_dose <- factor(
@@ -152,13 +151,6 @@ pca_df <- data.frame(pca$x)
 # add the pca to the merged_results dataframe
 pca_df <- cbind(pca_df, merged_results[, metadata_columns])
 
-
-
-# pca_df$Metadata_Time <- merged_results$Metadata_Time
-# pca_df$Metadata_dose <- merged_results$Metadata_dose
-# pca_df$Metadata_Well <- merged_results$Metadata_Well
-# pca_df$Metadata_data_split <- merged_results$Metadata_data_split
-# pca_df$shuffled <- merged_results$shuffled
 pca_df$Metadata_Time <- as.double((pca_df$Metadata_Time))
 pca_df$Metadata_dose <- as.factor(pca_df$Metadata_dose)
 
@@ -373,8 +365,6 @@ subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV$Metadat
 )
 
 
-# merged_results$Metadata_dose <- gsub('0', '0.0', merged_results$Metadata_dose)
-unique(subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV$Metadata_dose)
 subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV <- subset_results_Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV %>%
   mutate(Group = Metadata_Well) %>%
   arrange(Metadata_Well, Metadata_Time)
