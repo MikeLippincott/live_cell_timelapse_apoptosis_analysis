@@ -2,17 +2,17 @@ suppressPackageStartupMessages(suppressWarnings(library(ggplot2)))
 suppressPackageStartupMessages(suppressWarnings(library(dplyr)))
 suppressPackageStartupMessages(suppressWarnings(library(argparse)))
 
-# # Create an ArgumentParser object
-# parser <- ArgumentParser(description = "UMAP Visualization Script")
+# Create an ArgumentParser object
+parser <- ArgumentParser(description = "UMAP Visualization Script")
 
-# # Define the arguments
-# parser$add_argument("--data_mode", type = "character", help = "data to plot", required = TRUE)
-# # Parse the arguments
-# args <- parser$parse_args()
+# Define the arguments
+parser$add_argument("--data_mode", type = "character", help = "data to plot", required = TRUE)
+# Parse the arguments
+args <- parser$parse_args()
 
-# data_mode <- args$data_mode
+data_mode <- args$data_mode
 
-data_mode <- "CP"
+# data_mode <- "combined"
 
 # set paths
 umap_file_path <- file.path("../../data/umap/",paste0(data_mode,"_umap_transformed.parquet"))
@@ -23,11 +23,11 @@ if (!dir.exists(figures_path)) {
 }
 
 umap_df <- arrow::read_parquet(umap_file_path)
-
-
 head(umap_df,1)
 
-unique(umap_df$Metadata_dose)
+# replace 0.0 with 0 if needed
+umap_df$Metadata_dose <- as.character(umap_df$Metadata_dose)
+umap_df$Metadata_dose[umap_df$Metadata_dose == "0.0"] <- "0"
 
 # add nM to the dose column
 umap_df$Metadata_dose <- paste0(umap_df$Metadata_dose, " nM")
