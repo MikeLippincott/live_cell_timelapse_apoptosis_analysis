@@ -12,8 +12,6 @@ args <- parser$parse_args()
 
 data_mode <- args$data_mode
 
-# data_mode <- "combined"
-
 # set paths
 umap_file_path <- file.path("../../data/umap/",paste0(data_mode,"_umap_transformed.parquet"))
 umap_file_path <- normalizePath(umap_file_path)
@@ -76,12 +74,12 @@ umap_df$Metadata_Time <- factor(umap_df$Metadata_Time, levels = c(
 
 
 # make a ggplot of the umap
-width <- 30
-height <- 20
+width <- 15
+height <- 10
 options(repr.plot.width = width, repr.plot.height = height)
 umap_plot <- (
     ggplot(data = umap_df, aes(x = UMAP0, y = UMAP1, color = Metadata_dose))
-    + geom_point(size = 0.2)
+    + geom_point(size = 0.2, alpha = 0.4)
     + theme_bw()
     + facet_grid(Metadata_dose~Metadata_Time)
 
@@ -89,7 +87,7 @@ umap_plot <- (
     + theme(
         legend.position = "none",
         strip.text.x = element_text(size = 18),
-        strip.text.y = element_text(size = 18),
+        strip.text.y = element_text(size = 12),
         axis.text.x = element_text(size = 18),
         axis.text.y = element_text(size = 18),
         axis.title.x = element_text(size = 24),

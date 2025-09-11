@@ -94,12 +94,12 @@ umap_df$Metadata_Time <- factor(umap_df$Metadata_Time, levels = c(
 
 
 # make a ggplot of the umap
-width <- 30
-height <- 20
+width <- 15
+height <- 15
 options(repr.plot.width = width, repr.plot.height = height)
 umap_plot <- (
     ggplot(data = umap_df, aes(x = UMAP0, y = UMAP1, color = data_type))
-    + geom_point(size = 0.2)
+    + geom_point(size = 0.2, alpha = 0.4)
     + theme_bw()
     + facet_grid(Metadata_dose~Metadata_Time)
     + scale_color_manual(values = data_type_colors)
@@ -109,7 +109,7 @@ umap_plot <- (
         color = guide_legend(
             title = "Data Type",
             title.position = "left",
-            override.aes = list(size=10),
+            override.aes = list(size=10, alpha=1),
             title.theme = element_text(size=20),
             label.theme = element_text(size=18),
             # make horizontal
@@ -120,7 +120,7 @@ umap_plot <- (
     + theme(
         legend.position = "bottom",
         strip.text.x = element_text(size = 18),
-        strip.text.y = element_text(size = 18),
+        strip.text.y = element_text(size = 14),
         axis.text.x = element_text(size = 18),
         axis.text.y = element_text(size = 18),
         axis.title.x = element_text(size = 24),
