@@ -10,35 +10,7 @@ for (pkg in c("ggplot2", "dplyr", "patchwork", "ggplotify")) {
         )
     )
 }
-
-color_pallete_for_dose <- c(
-    "0.0" = "#85FF33",
-    "0.61" = "#75FF1A",
-    "1.22" = "#62FF00",
-    "2.44" = "#4DC507",
-    "4.88" = "#398E0B",
-    "9.77" = "#265A0C",
-    "19.53" = "#132B08",
-    "39.06" = "#620B8E",
-    "78.13" = "#410C5A",
-    "156.25" = "#21082B"
-)
-font_size <- 24
-plot_themes <- (
-    theme_bw()
-    + theme(
-        legend.position = "bottom",
-        legend.text = element_text(size = font_size),
-        legend.title = element_text(size = font_size),
-        axis.title.x = element_text(size = font_size),
-        axis.text.x = element_text(size = font_size),
-        axis.title.y = element_text(size = font_size),
-        axis.text.y = element_text(size = font_size),
-        strip.text = element_text(size = font_size -2),
-    )
-
-
-)
+source("../../utils/r_themes.r")
 
 actual_results_file_path <- file.path("../../data/CP_aggregated/endpoints/aggregated_profile.parquet")
 actual_results <- arrow::read_parquet(actual_results_file_path)
@@ -133,6 +105,34 @@ pcadf <- pcadf[, apply(pcadf, 2, function(x) var(x, na.rm = TRUE) != 0)]
 
 head(pcadf)
 
+# scree plot to see how many components to keep
+pca <- prcomp(pcadf, center = TRUE, rank. = 2, scale. = TRUE)
+scree_data <- data.frame(
+    PC = 1:length(pca$sdev),
+    Variance = (pca$sdev)^2,
+    Proportion = (pca$sdev)^2 / sum((pca$sdev)^2)
+)
+scree_plot <- (
+    ggplot(scree_data, aes(x = PC, y = Variance, group = 1))
+    + geom_bar(stat = "identity", fill = "lightblue", color = "black")
+    + plot_themes
+    + labs(
+        title = "Scree plot",
+        x = "Principal Component",
+        y = "Variance"
+    )
+    + theme(
+        axis.text.x = element_text(angle = 90, hjust = 1)
+    )
+)
+scree_plot
+# zoom in on the first 25 components
+scree_plot_zoom <- (
+    scree_plot
+    + coord_cartesian(xlim = c(1, 25))
+)
+scree_plot_zoom
+
 
 pca <- prcomp(pcadf, center = TRUE, rank. = 2, scale. = TRUE)
 # get the pca of the results
@@ -163,10 +163,10 @@ pca1_plot <- (
     + theme_minimal()
     + facet_grid(Metadata_data_split ~ shuffled)
     + geom_vline(xintercept = (30*12), linetype = "dashed", color = "black", size = 1)
-    + labs(x="Time (minutes)", y="PC1", color="Dose (nM)")
+    + labs(x="Time (minutes)", y="PC1", color="Stuarosporine Dose (nM)")
     + plot_themes
-    + scale_color_manual(values = color_pallete_for_dose)
-    + guides(color = guide_legend( override.aes = list(size = 5, alpha = 1)))
+    + scale_color_manual(values = color_palette_dose)
+    + dose_guides_color
     + theme(
         # axis tick labels
         axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
@@ -192,9 +192,9 @@ pca2_plot <- (
     + theme_minimal()
     + facet_grid(Metadata_data_split ~ shuffled)
     + geom_vline(xintercept = (30*12), linetype = "dashed", color = "black", size = 1)
-    + labs(x="Time (minutes)", y="PC2", color="Dose (nM)")
+    + labs(x="Time (minutes)", y="PC2", color="Stuarosporine Dose (nM)")
     + plot_themes
-    + scale_color_manual(values = color_pallete_for_dose)
+    + scale_color_manual(values = color_palette_dose)
     + guides(color = guide_legend( override.aes = list(size = 5, alpha = 1)))
     + theme(
         # axis tick labels
@@ -243,24 +243,13 @@ pca_over_time_plot <- (
     + geom_point(aes(shape = Metadata_shuffle_plus_data_split), size = 5, alpha = 0.7)
     + theme_minimal()
     + facet_wrap( ~ Metadata_Time, ncol = 7)
-    + labs(x="PC1", y="PC2", color="Dose (nM)")
+    + labs(x="PC1", y="PC2", color="Stuarosporine Dose (nM)")
     + plot_themes
-    + scale_color_manual(values = color_pallete_for_dose)
+    + scale_color_manual(values = color_palette_dose)
     + scale_shape_manual(values = c(16, 17, 1, 2), name = "Shuffle + data split")
 
-    + guides(
-        color = guide_legend(
-            override.aes = list(size = 7, alpha = 1),
-            title.position = "top",
-            title.hjust = 0.5,
-            ),
-        shape = guide_legend(
-            override.aes = list(size = 7, alpha = 1),
-            title.position = "top",
-            title.hjust = 0.5,
-            nrow = 2,
-        )
-    )
+    + dose_guides_color
+    + shuffle_guides_shape
     # spread the x axis ticks out
     + scale_x_continuous(breaks = seq(-80, 20,by = 40))
     + theme(
@@ -379,8 +368,8 @@ Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV_plot <- (
 
     + labs(x="Time (minutes)", y="AnnexinV Integrated Intensity\nin the Cytoplasm", color="Dose (nM)")
     + plot_themes
-    + scale_color_manual(values = color_pallete_for_dose)
-    + guides(color = guide_legend( override.aes = list(size = 5, alpha = 1)))
+    + scale_color_manual(values = color_palette_dose)
+    + dose_guides_color
     + theme(
         # axis tick labels
         axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
@@ -438,7 +427,7 @@ final_plot <- (
 
     + pca_over_time_plot
     + plot_layout(design = layout)
-    + plot_annotation(tag_levels = 'A') & theme(plot.tag = element_text(size = 20))
+    + plot_annotation(tag_levels = 'A') & theme(plot.tag = element_text(size = 24))
 )
 ggsave(
     filename = "../figures/final_predicted_terminal_profiles_from_all_time_points.png",
