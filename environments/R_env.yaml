@@ -9,7 +9,7 @@ dependencies:
   - r-base
   - r-essentials
   - r-irkernel
-  - r-ggplot2
+  - r-ggplot2=3.4.4
   - r-rsconnect
   - r-dplyr
   - r-tidyr
