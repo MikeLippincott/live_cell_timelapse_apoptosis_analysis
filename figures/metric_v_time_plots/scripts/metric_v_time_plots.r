@@ -13,7 +13,7 @@ for (pkg in packages) {
 }
 
 umap_file_path <- file.path(
-    "../../../3.generate_umap_and_PCA/results/UMAP/single-cell_profiles_CP_scDINO_umap.parquet"
+    "../../../data/umap/combined_umap_transformed.parquet"
 )
 mAP_file_path <- file.path(
     "../../../4.mAP_analysis/data/mAP/mAP_scores_CP_scDINO.parquet"
@@ -22,7 +22,7 @@ cell_count_file_path <- file.path(
     "../../../2.cell_tracks_data/data/combined_stats.parquet"
 )
 pca_file_path <- file.path(
-    "../../../3.generate_umap_and_PCA/results/pca/single-cell_profiles_CP_scDINO_pca.parquet"
+    "../../../data/PCA/PCA_2D_combined_features.parquet"
 )
 
 # final figure path
@@ -208,8 +208,8 @@ temporal_palette <- c(
 
 umap_df$Metadata_Time <- as.numeric(umap_df$Metadata_Time)
 umap_plot_facet <- (
-    ggplot(data = umap_df, aes(x = UMAP_0, y = UMAP_1))
-    + geom_point(aes(color = Metadata_Time), size = 0.5, alpha = 0.5)
+    ggplot(data = umap_df, aes(x = UMAP0, y = UMAP1))
+    + geom_point(aes(color = Metadata_Time), size = 0.2, alpha = 0.2)
     + scale_color_gradientn(
         colors = temporal_palette,
         breaks = c(0, 180, 360), # breaks at 0, 90, and 360 minutes
@@ -239,8 +239,8 @@ temporal_palette <- c(
 )
 # calculate the centroid of each UMAP cluster dose and time wise
 umap_df_centroids <- umap_df %>% group_by(Metadata_dose, Metadata_Time) %>% summarise(
-    UMAP0_centroid = mean(UMAP_0),
-    UMAP1_centroid = mean(UMAP_1)
+    UMAP0_centroid = mean(UMAP0),
+    UMAP1_centroid = mean(UMAP1)
 )
 umap_df_centroids$Metadata_Time <- as.numeric(gsub(" min", "", umap_df_centroids$Metadata_Time))
 umap_df_centroids$Metadata_dose_w_unit <- paste0(
@@ -331,9 +331,40 @@ pca_df$Metadata_dose_w_unit <- factor(
     )
 )
 
+head(pca_df)
+
+# set temporal colour palette of 13 hues of blue
+
+# calculate the centroid of each UMAP cluster dose and time wise
+pca_df_centroids <- pca_df %>% group_by(Metadata_dose, Metadata_Time) %>% summarise(
+    PCA0_centroid = mean(PCA0),
+    PCA1_centroid = mean(PCA1)
+)
+pca_df_centroids$Metadata_Time <- as.numeric(gsub(" min", "", pca_df_centroids$Metadata_Time))
+pca_df_centroids$Metadata_dose_w_unit <- paste0(
+    pca_df_centroids$Metadata_dose,
+    " nM"
+)
+pca_df_centroids$Metadata_dose_w_unit <- as.character(pca_df_centroids$Metadata_dose_w_unit)
+pca_df_centroids$Metadata_dose_w_unit <- factor(
+    pca_df_centroids$Metadata_dose_w_unit,
+    levels = c(
+        '0.0 nM',
+        '0.61 nM',
+        '1.22 nM',
+        '2.44 nM',
+        '4.88 nM',
+        '9.77 nM',
+        '19.53 nM',
+        '39.06 nM',
+        '78.13 nM',
+        '156.25 nM'
+    )
+)
+
 pca_plot_facet <- (
-    ggplot(data = pca_df, aes(x = PCA0, y = PCA1))
-    + geom_point(aes(color = Metadata_Time), size = 0.5, alpha = 0.5)
+    ggplot(data = pca_df_centroids, aes(x = PCA0_centroid, y = PCA1_centroid))
+    + geom_point(aes(color = Metadata_Time), size = 5)
     + scale_color_gradientn(
         colors = temporal_palette,
         breaks = c(0, 180, 360), # breaks at 0, 90, and 360 minutes
@@ -345,17 +376,17 @@ pca_plot_facet <- (
         color = "Time (minutes)",
     )
     # change the x scale
-    + scale_x_continuous(breaks = seq(-150, 150, 50))
     + facet_wrap(Metadata_dose_w_unit~., nrow = 2)
     + guides(
         color = guide_colorbar(
             title.position = "top",
             title.hjust = 0.5,
-            title.theme = element_text(size = 16),
+            title.theme = element_text(size = 24),
             # make the legend longer
             barwidth = 20,
         ))
     + plot_themes
+
     )
 pca_plot_facet
 
@@ -374,8 +405,6 @@ cell_count_df$Metadata_Well <- sub("_.*", "", cell_count_df$well_fov)
 # convert dose to factor
 
 
-cell_count_df
-
 # get the counts of cells per timepoint per well
 cell_count_df <- cell_count_df %>%
     group_by(Metadata_Time, Metadata_Well, Metadata_dose) %>%
@@ -384,16 +413,6 @@ cell_count_df <- cell_count_df %>%
         .groups = "drop"
     )
 
-# # normalize each well's cell count to the first timepoint
-# # cell_count_norm_df <-
-# cell_count_df %>%
-#     group_by(Metadata_Well, Metadata_dose, Metadata_time) %>%
-#     mutate(
-#         cell_count_norm = cell_count / cell_count[Metadata_time == 0]
-#     ) %>%
-#     ungroup()
-# normalize each well's cell count to the first timepoint (only keep wells with timepoint 0)
-# normalize each well's cell count to the first timepoint
 cell_count_norm_df <- cell_count_df %>%
     group_by(Metadata_Well, Metadata_dose) %>%
     mutate(
@@ -430,9 +449,6 @@ normalized_cell_count_v_time_plot_colored_by_dose <- (
 )
 normalized_cell_count_v_time_plot_colored_by_dose
 
-cell_count_v_time_plot_colored_by_dose <- cell_count_v_time_plot_colored_by_dose + theme(legend.position = "none")
-normalized_cell_count_v_time_plot_colored_by_dose <- normalized_cell_count_v_time_plot_colored_by_dose + theme(legend.position = "none")
-
 width <- 17
 height <- 15
 options(repr.plot.width=width, repr.plot.height=height)
@@ -443,12 +459,15 @@ layout <- c(
     area(t=2, b=2, l=3, r=4) # D
 )
 metric_v_time_final_plot <- (
-    umap_centroid_plot
-    + pca_plot_facet
+    umap_plot_facet
+    + umap_centroid_plot
     + cell_count_v_time_plot_colored_by_dose
     + mAP_plot
 
-    + plot_layout(design = layout, widths = c(0.6, 1))
+    + plot_layout(
+        design = layout,
+        widths = c(0.6, 1)
+        )
     # make bottom plot not align
     + plot_annotation(tag_levels = 'A') & theme(plot.tag = element_text(size = 28))
 )
