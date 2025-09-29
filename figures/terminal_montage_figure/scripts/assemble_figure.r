@@ -98,7 +98,7 @@ intensity_plot <- (
     # add jittered points
     + geom_jitter(width = 0.2, size = 2, alpha = 1, aes(color = Metadata_dose))
     + labs(
-        x = "Dose (µM)",
+        x = "Staurosporine eDose (nM)",
         y = "Whole Image Mean Intensity of AnnexinV"
     )
     + theme_bw()
@@ -109,7 +109,9 @@ intensity_plot <- (
         axis.text.y = element_text(size = 18),
         plot.title = element_text(size = 18, hjust = 0.5),
         legend.position = "none",
-        strip.text = element_text(size = 18)
+        strip.text = element_text(size = 18),
+
+        legend.title = element_text(size=20)
     )
     + scale_fill_manual(values = color_pallete_for_dose)
     # add color to jitter points
@@ -180,8 +182,8 @@ umap_plot <- (
     + scale_color_manual(values = color_pallete_for_dose)
     + guides(
         color = guide_legend(
-            override.aes = list(size = 5),
-            title = "Dose (nM)",
+            override.aes = list(size = 5, alpha = 1),
+            title = "Staurosporine Dose (nM)",
             title.position = "top",
             title.hjust = 0.5,
             # make them horizontal
