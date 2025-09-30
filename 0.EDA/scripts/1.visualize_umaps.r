@@ -1,6 +1,7 @@
 suppressPackageStartupMessages(suppressWarnings(library(ggplot2)))
 suppressPackageStartupMessages(suppressWarnings(library(dplyr)))
 suppressPackageStartupMessages(suppressWarnings(library(argparse)))
+source("../../utils/r_themes.r")
 
 # Create an ArgumentParser object
 parser <- ArgumentParser(description = "UMAP Visualization Script")
@@ -27,6 +28,8 @@ head(umap_df,1)
 umap_df$Metadata_dose <- as.character(umap_df$Metadata_dose)
 umap_df$Metadata_dose[umap_df$Metadata_dose == "0.0"] <- "0"
 
+unique(umap_df$Metadata_Time)
+
 # add nM to the dose column
 umap_df$Metadata_dose <- paste0(umap_df$Metadata_dose, " nM")
 # make the dose a factor with levels
@@ -44,13 +47,29 @@ umap_df$Metadata_dose <- factor(umap_df$Metadata_dose, levels = c(
     )
     )
 
+# check if time is a character
+if (is.character(umap_df$Metadata_Time)) {
+    # check if leading zeros are present
+    if (any(grepl("00", umap_df$Metadata_Time))) {
+
+        # make time a factor with levels
+        # replace the "T000" with ""
+        umap_df$Metadata_Time <- gsub("T00", "", umap_df$Metadata_Time)
+        umap_df$Metadata_Time <- gsub("000", "", umap_df$Metadata_Time)
+        umap_df$Metadata_Time <- gsub("00", "", umap_df$Metadata_Time)
+        umap_df$Metadata_Time <- gsub("0", "", umap_df$Metadata_Time)
+    }
+}
 
 
-# make time a factor with levels
-# replace the "T000" with ""
-umap_df$Metadata_Time <- gsub("T00", "", umap_df$Metadata_Time)
 # make time an integer
 umap_df$Metadata_Time <- as.integer(umap_df$Metadata_Time)
+if (min(umap_df$Metadata_Time) == 1) {
+    umap_df$Metadata_Time <- umap_df$Metadata_Time - 1
+}else {
+    # do nothing
+
+}
 # change the Metadata Time columnd to minutes
 umap_df$Metadata_Time <- ((umap_df$Metadata_Time)) * 30
 # add "min" to the time column
@@ -98,10 +117,6 @@ umap_plot
 # save
 ggsave(paste0("../figures/",data_mode,"/umap_plot_time.png"), plot = umap_plot, width = width, height = height, dpi = 600)
 
-# set temporal colour palette of 13 hues of blue
-temporal_palette <- c(
-    "#008CF5", "#0079E7", "#0066D9", "#0053CB", "#0040BD", "#002D9F", "#001A91", "#000781", "#000570", "#000460", "#000350", "#000240", "#000130"
-)
 # calculate the centroid of each UMAP cluster dose and time wise
 umap_df_centroids <- umap_df %>% group_by(Metadata_dose, Metadata_Time) %>% summarise(
     UMAP0_centroid = mean(UMAP0),
