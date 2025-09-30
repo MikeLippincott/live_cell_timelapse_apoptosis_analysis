@@ -1,18 +1,17 @@
 suppressPackageStartupMessages(suppressWarnings(library(ggplot2)))
 suppressPackageStartupMessages(suppressWarnings(library(dplyr)))
 suppressPackageStartupMessages(suppressWarnings(library(argparse)))
+source("../../utils/r_themes.r")
 
-# # Create an ArgumentParser object
-# parser <- ArgumentParser(description = "UMAP Visualization Script")
+# Create an ArgumentParser object
+parser <- ArgumentParser(description = "UMAP Visualization Script")
 
-# # Define the arguments
-# parser$add_argument("--data_mode", type = "character", help = "data to plot", required = TRUE)
-# # Parse the arguments
-# args <- parser$parse_args()
+# Define the arguments
+parser$add_argument("--data_mode", type = "character", help = "data to plot", required = TRUE)
+# Parse the arguments
+args <- parser$parse_args()
 
-# data_mode <- args$data_mode
-
-data_mode <- "CP"
+data_mode <- args$data_mode
 
 # set paths
 umap_file_path <- file.path("../../data/umap/",paste0(data_mode,"_umap_transformed.parquet"))
@@ -23,11 +22,13 @@ if (!dir.exists(figures_path)) {
 }
 
 umap_df <- arrow::read_parquet(umap_file_path)
-
-
 head(umap_df,1)
 
-unique(umap_df$Metadata_dose)
+# replace 0.0 with 0 if needed
+umap_df$Metadata_dose <- as.character(umap_df$Metadata_dose)
+umap_df$Metadata_dose[umap_df$Metadata_dose == "0.0"] <- "0"
+
+unique(umap_df$Metadata_Time)
 
 # add nM to the dose column
 umap_df$Metadata_dose <- paste0(umap_df$Metadata_dose, " nM")
@@ -46,13 +47,29 @@ umap_df$Metadata_dose <- factor(umap_df$Metadata_dose, levels = c(
     )
     )
 
+# check if time is a character
+if (is.character(umap_df$Metadata_Time)) {
+    # check if leading zeros are present
+    if (any(grepl("00", umap_df$Metadata_Time))) {
+
+        # make time a factor with levels
+        # replace the "T000" with ""
+        umap_df$Metadata_Time <- gsub("T00", "", umap_df$Metadata_Time)
+        umap_df$Metadata_Time <- gsub("000", "", umap_df$Metadata_Time)
+        umap_df$Metadata_Time <- gsub("00", "", umap_df$Metadata_Time)
+        umap_df$Metadata_Time <- gsub("0", "", umap_df$Metadata_Time)
+    }
+}
 
 
-# make time a factor with levels
-# replace the "T000" with ""
-umap_df$Metadata_Time <- gsub("T00", "", umap_df$Metadata_Time)
 # make time an integer
 umap_df$Metadata_Time <- as.integer(umap_df$Metadata_Time)
+if (min(umap_df$Metadata_Time) == 1) {
+    umap_df$Metadata_Time <- umap_df$Metadata_Time - 1
+}else {
+    # do nothing
+
+}
 # change the Metadata Time columnd to minutes
 umap_df$Metadata_Time <- ((umap_df$Metadata_Time)) * 30
 # add "min" to the time column
@@ -76,12 +93,12 @@ umap_df$Metadata_Time <- factor(umap_df$Metadata_Time, levels = c(
 
 
 # make a ggplot of the umap
-width <- 30
-height <- 20
+width <- 15
+height <- 10
 options(repr.plot.width = width, repr.plot.height = height)
 umap_plot <- (
     ggplot(data = umap_df, aes(x = UMAP0, y = UMAP1, color = Metadata_dose))
-    + geom_point(size = 0.2)
+    + geom_point(size = 0.2, alpha = 0.4)
     + theme_bw()
     + facet_grid(Metadata_dose~Metadata_Time)
 
@@ -89,7 +106,7 @@ umap_plot <- (
     + theme(
         legend.position = "none",
         strip.text.x = element_text(size = 18),
-        strip.text.y = element_text(size = 18),
+        strip.text.y = element_text(size = 12),
         axis.text.x = element_text(size = 18),
         axis.text.y = element_text(size = 18),
         axis.title.x = element_text(size = 24),
@@ -100,10 +117,6 @@ umap_plot
 # save
 ggsave(paste0("../figures/",data_mode,"/umap_plot_time.png"), plot = umap_plot, width = width, height = height, dpi = 600)
 
-# set temporal colour palette of 13 hues of blue
-temporal_palette <- c(
-    "#008CF5", "#0079E7", "#0066D9", "#0053CB", "#0040BD", "#002D9F", "#001A91", "#000781", "#000570", "#000460", "#000350", "#000240", "#000130"
-)
 # calculate the centroid of each UMAP cluster dose and time wise
 umap_df_centroids <- umap_df %>% group_by(Metadata_dose, Metadata_Time) %>% summarise(
     UMAP0_centroid = mean(UMAP0),

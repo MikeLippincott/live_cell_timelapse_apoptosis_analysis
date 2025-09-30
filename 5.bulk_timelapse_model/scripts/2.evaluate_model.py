@@ -67,9 +67,7 @@ models_path = pathlib.Path("../models").resolve(strict=True)
 terminal_column_names = pathlib.Path("../results/terminal_columns.txt").resolve(
     strict=True
 )
-predictions_save_path = pathlib.Path(
-    "../results/predicted_terminal_profiles.parquet"
-).resolve()
+predictions_save_path = pathlib.Path("../results/model_performances.parquet").resolve()
 terminal_column_names = [
     line.strip() for line in terminal_column_names.read_text().splitlines()
 ]
@@ -84,11 +82,19 @@ profile_df.head()
 # In[4]:
 
 
+single_feature = "Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV"
+
+
+# In[5]:
+
+
 terminal_df = profile_df[terminal_column_names]
+single_feature_df = profile_df[[single_feature]]
 profile_df = profile_df.drop(columns=terminal_column_names)
 
 
 # In[5]:
+# In[6]:
 
 
 models = pathlib.Path(models_path).glob("*.joblib")
@@ -100,20 +106,19 @@ models_dict = {
 }
 
 for model_path in models:
-    print(model_path.name)
     models_dict["model_name"].append(model_path.name)
     models_dict["model_path"].append(model_path)
     models_dict["shuffled"].append(
         "shuffled" if "shuffled" in model_path.name else "not_shuffled"
     )
     models_dict["feature"].append(
-        model_path.name.split("singlefeature")[1].strip(".joblib").strip("_")
-        if "singlefeature" in model_path.name
+        "Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV"
+        if "terminal_feature" in model_path.name
         else "all_terminal_features"
     )
 
 
-# In[6]:
+# In[7]:
 
 
 results_dict = {
@@ -126,28 +131,37 @@ results_dict = {
 }
 
 
-# In[7]:
+# In[8]:
 
 
 metadata_columns = [x for x in profile_df.columns if "metadata" in x.lower()]
+terminal_column_names = [x for x in profile_df.columns if "Terminal" in x]
 features_df = profile_df.drop(columns=metadata_columns, errors="ignore")
 
 
-# In[8]:
+# In[9]:
+
+
+models_dict
+
+
+# In[10]:
 
 
 for i, model_name in enumerate(models_dict["model_name"]):
     print(f"Processing model {i + 1}/{len(models_dict['model_name'])}: {model_name}")
+    print(models_dict["feature"][i])
     model = joblib.load(models_dict["model_path"][i])
-    if models_dict["feature"][i] != "all_terminal_features":
-        predictions = model.predict(features_df)
-        mse, mae, r2 = model_stats_grab(
-            predictions, terminal_df[models_dict["feature"][i]]
-        )
+    if "all_terminal_features" not in str(models_dict["feature"][i]):
+        predictions = model.predict(features_df[model.feature_names_in_])
+        print(predictions.shape, single_feature_df[single_feature].shape)
+
+        mse, mae, r2 = model_stats_grab(predictions, single_feature_df[single_feature])
         results_dict["shuffled"].append(models_dict["shuffled"][i])
         results_dict["feature"].append(models_dict["feature"][i])
     else:
-        predictions = model.predict(features_df)
+        predictions = model.predict(features_df[model.feature_names_in_])
+        print(predictions.shape, terminal_df.shape)
         mse, mae, r2 = model_stats_grab(predictions, terminal_df)
         results_dict["shuffled"].append(models_dict["shuffled"][i])
         results_dict["feature"].append("all_terminal_features")
@@ -158,10 +172,10 @@ for i, model_name in enumerate(models_dict["model_name"]):
     results_dict["r2"].append(r2)
 results_df = pd.DataFrame(results_dict)
 results_df.to_parquet(predictions_save_path, index=False)
-results_df.head(8)
+results_df.head()
 
 
-# In[9]:
+# In[11]:
 
 
 # plot the performance of the models
