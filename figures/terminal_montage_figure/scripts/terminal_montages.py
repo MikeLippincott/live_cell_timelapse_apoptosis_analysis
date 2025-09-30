@@ -251,7 +251,7 @@ all_dfs = pd.concat(
 
 # ## Full montage of all timepoints and all doeses
 
-# In[6]:
+# In[5]:
 
 
 # create a montage of the images in composite_df
