@@ -20,3 +20,4 @@ dependencies:
   - r-patchwork
   - r-gridextra
   - r-ggplotify
+  - r-viridis

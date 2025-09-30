@@ -1,4 +1,4 @@
-packages <- c("ggplot2", "dplyr", "patchwork", "tidyr")
+packages <- c("ggplot2", "dplyr", "patchwork", "tidyr", "viridis")
 for (pkg in packages) {
     suppressPackageStartupMessages(
         suppressWarnings(
@@ -116,10 +116,9 @@ intensity_plot <- (
         axis.title.y = element_text(size = 18),
         axis.text.y = element_text(size = 18),
         plot.title = element_text(size = 18, hjust = 0.5),
-        legend.position = "none",
         strip.text = element_text(size = 18)
     )
-    + scale_fill_manual(values = color_palette_dose)
+    + scale_fill_manual(values = color_palette_dose_turbo)
     # add color to jitter points
     + scale_color_manual(values = points_color_palette_for_dose)
 )
@@ -136,3 +135,112 @@ png(
 intensity_plot
 dev.off()
 intensity_plot
+
+data_mode <- "terminal"
+# set paths
+umap_file_path <- file.path("../../../data/umap/","terminal_umap_transformed.parquet")
+umap_file_path <- normalizePath(umap_file_path)
+umap_df <- arrow::read_parquet(umap_file_path)
+# add nM to the dose column
+# umap_df$Metadata_dose <- paste0(umap_df$Metadata_dose, " nM")
+# make the dose a factor with levels
+umap_df$Metadata_dose <- factor(umap_df$Metadata_dose, levels = c(
+    "0",
+    "0.61",
+    "1.22",
+    "2.44",
+    "4.88",
+    "9.77",
+    "19.53",
+    "39.06",
+    "78.13",
+    "156.25"
+    )
+    )
+
+
+# make a ggplot of the umap
+width <- 8
+height <- 8
+options(repr.plot.width = width, repr.plot.height = height)
+umap_plot <- (
+    ggplot(data = umap_df, aes(x = UMAP0, y = UMAP1, color = Metadata_dose))
+    + geom_point(size = 0.9, alpha = 0.5)
+    + theme_bw()
+
+    + labs( x = "UMAP0", y = "UMAP1")
+    + theme(
+        strip.text.x = element_text(size = 18),
+        strip.text.y = element_text(size = 18),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        axis.title.x = element_text(size = 24),
+        axis.title.y = element_text(size = 24),
+        legend.title = element_text(size = 20),
+        legend.text = element_text(size = 20),
+        legend.position = "bottom",
+        legend.box = "horizontal",
+
+
+        )
+    # use turbo color scale
+    + scale_color_manual(values = color_palette_dose_turbo)
+    + guides(
+        color = guide_legend(
+            override.aes = list(size = 5, alpha = 1),
+            title = "Staurosporine dose (nM)",
+            title.position = "top",
+            title.hjust = 0.5,
+            # make them horizontal
+            nrow = 2,
+        )
+    )
+
+
+)
+png(
+    filename = file.path(
+        figure_path,
+        paste0("terminal_umap_turbo_colors.png")
+    ),
+    width = width,
+    height = height,
+    units = "in",
+    res = 600
+)
+umap_plot
+dev.off()
+umap_plot
+
+layout <- "
+AB
+"
+height <- 10
+width <- 16
+options(repr.plot.width = width, repr.plot.height = height)
+combined_plot <- (
+    intensity_plot
+    + umap_plot
+        + plot_layout(
+        design = layout,
+        heights = c(1, 1),  # montage gets 2x height of bottom row
+
+    )
+    + plot_annotation(tag_levels = 'A')
+    & theme(
+        plot.tag = element_text(size = 24, face = "bold",hjust = 0.5, vjust = 1),
+    )
+)
+png(
+    filename = file.path(
+        figure_path,
+        paste0("supp_figure_annexinV_combined_turbo_colors.png")
+    ),
+    width = width,
+    height = height,
+    units = "in",
+    res = 600
+)
+combined_plot
+dev.off()
+combined_plot
