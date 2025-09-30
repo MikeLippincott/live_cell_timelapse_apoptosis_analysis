@@ -1,6 +1,7 @@
 suppressPackageStartupMessages(suppressWarnings(library(ggplot2)))
 suppressPackageStartupMessages(suppressWarnings(library(dplyr)))
 suppressPackageStartupMessages(suppressWarnings(library(argparse)))
+source("../../utils/r_themes.r")
 
 data_mode <- "terminal"
 
@@ -15,41 +16,26 @@ if (!dir.exists(figures_path)) {
 umap_df <- arrow::read_parquet(umap_file_path)
 
 
-# add nM to the dose column
-umap_df$Metadata_dose <- paste0(umap_df$Metadata_dose, " nM")
 # make the dose a factor with levels
 umap_df$Metadata_dose <- factor(umap_df$Metadata_dose, levels = c(
-    "0 nM",
-    "0.61 nM",
-    "1.22 nM",
-    "2.44 nM",
-    "4.88 nM",
-    "9.77 nM",
-    "19.53 nM",
-    "39.06 nM",
-    "78.13 nM",
-    "156.25 nM"
+    "0",
+    "0.61",
+    "1.22",
+    "2.44",
+    "4.88",
+    "9.77",
+    "19.53",
+    "39.06",
+    "78.13",
+    "156.25"
     )
     )
 
 
-
-color_pallete_for_dose <- c(
-    "0 nM" = "#85FF33",
-    "0.61 nM" = "#75FF1A",
-    "1.22 nM" = "#62FF00",
-    "2.44 nM" = "#4DC507",
-    "4.88 nM" = "#398E0B",
-    "9.77 nM" = "#265A0C",
-    "19.53 nM" = "#132B08",
-    "39.06 nM" = "#620B8E",
-    "78.13 nM" = "#410C5A",
-    "156.25 nM" = "#21082B"
-)
 
 # make a ggplot of the umap
-width <- 8
-height <- 8
+width <- 10
+height <- 10
 options(repr.plot.width = width, repr.plot.height = height)
 umap_plot <- (
     ggplot(data = umap_df, aes(x = UMAP0, y = UMAP1, color = Metadata_dose))
@@ -71,7 +57,7 @@ umap_plot <- (
 
 
         )
-    + scale_color_manual(values = color_pallete_for_dose)
+    + scale_color_manual(values = color_palette_dose)
     + guides(
         color = guide_legend(
             override.aes = list(size = 5),
