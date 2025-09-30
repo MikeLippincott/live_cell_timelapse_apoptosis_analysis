@@ -1,3 +1,4 @@
+# color palette for plotting dose response curves
 color_palette_dose <- c(
     "0" = "#132B08", #132B08
     "0.61" = "#265A0C", #265A0C
