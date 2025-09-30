@@ -19,6 +19,7 @@ python 3.run_PCA.py --data_mode "CP"
 python 3.run_PCA.py --data_mode "combined"
 python 3.run_PCA.py --data_mode "scDINO"
 python 3.run_PCA.py --data_mode "terminal"
+
 # deactivate the conda environment
 conda deactivate
 
