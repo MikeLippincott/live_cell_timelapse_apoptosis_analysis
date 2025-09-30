@@ -107,7 +107,7 @@ merged_results <- merged_results %>%
 
 
 merged_results <- merged_results %>% arrange(Metadata_Well, Metadata_Time)
-head(merged_results)
+
 
 # get the pca of the results
 metadata_columns <- c("Metadata_Time", "Metadata_dose", "Metadata_Well", "shuffled", "Metadata_data_split")
@@ -202,9 +202,6 @@ pca1_plot <- (
     + facet_grid(Metadata_data_split ~ shuffled)
     + geom_vline(xintercept = (30*12), linetype = "dashed", color = "black", size = 1)
     + labs(x="Time (minutes)", y="PC1", color="Stuarosporine Dose (nM)")
-    + plot_themes
-    + scale_color_manual(values = color_palette_dose)
-    + dose_guides_color
     + theme(
         # axis tick labels
         axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
