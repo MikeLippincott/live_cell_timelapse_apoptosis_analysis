@@ -15,6 +15,6 @@ one_off_analysis/results/*
 6.linear_modeling/linear_models/*
 6.linear_modeling/results/*
 6.linear_modeling/scripts/Rplots.pdf
-7.sc_timelapse_model/models/*
+6.linear_modeling/notebooks/VennDiagram*.log*
 7.sc_timelapse_model/results/*
 7.sc_timelapse_model/models/*
