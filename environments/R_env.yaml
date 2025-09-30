@@ -4,7 +4,6 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - pip
   - jupyter
   - r-base
   - r-essentials
@@ -21,3 +20,4 @@ dependencies:
   - r-gridextra
   - r-ggplotify
   - r-viridis
+  - r-VennDiagram
