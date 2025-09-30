@@ -98,7 +98,7 @@ intensity_plot <- (
     # add jittered points
     + geom_jitter(width = 0.2, size = 2, alpha = 1, aes(color = Metadata_dose))
     + labs(
-        x = "Staurosporine eDose (nM)",
+        x = "Staurosporine dose (nM)",
         y = "Whole Image Mean Intensity of AnnexinV"
     )
     + theme_bw()
