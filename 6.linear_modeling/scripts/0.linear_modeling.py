@@ -287,6 +287,9 @@ cp_df.drop(
 # make channel2 None if feature is not correlation
 cp_df.loc[~cp_df["Feature_type"].str.contains("Correlation"), "Channel2"] = "None"
 
+# replace X or Y, or Adjacent with None in the Channel column
+cp_df.loc[cp_df["Channel"].isin(["X", "Y", "Adjacent"]), "Channel"] = "None"
+
 
 # In[11]:
 
