@@ -11,6 +11,7 @@ for (pkg in packages) {
         )
     )
 }
+source("../../../utils/r_themes.r")
 
 montage_image_path <- file.path("../../../figures/terminal_montage_figure/figures/terminal_montage.png")
 
@@ -63,20 +64,7 @@ intensity_features_df$Metadata_dose <- factor(
         '156.25'
 )
     )
-### Plot the intensity features for each feature and dose
-color_pallete_for_dose <- c(
-    "0" = "#85FF33",
-    "0.61" = "#75FF1A",
-    "1.22" = "#62FF00",
-    "2.44" = "#4DC507",
-    "4.88" = "#398E0B",
-    "9.77" = "#265A0C",
-    "19.53" = "#132B08",
-    "39.06" = "#620B8E",
-    "78.13" = "#410C5A",
-    "156.25" = "#21082B"
-)
-points_color_pallete_for_dose <- c(
+points_color_palette_for_dose <- c(
     "0" = "#808080",
     "0.61" = "#000000",
     "1.22" = "#000000",
@@ -98,7 +86,7 @@ intensity_plot <- (
     # add jittered points
     + geom_jitter(width = 0.2, size = 2, alpha = 1, aes(color = Metadata_dose))
     + labs(
-        x = "Dose (µM)",
+        x = "Staurosporine dose (nM)",
         y = "Whole Image Mean Intensity of AnnexinV"
     )
     + theme_bw()
@@ -109,11 +97,13 @@ intensity_plot <- (
         axis.text.y = element_text(size = 18),
         plot.title = element_text(size = 18, hjust = 0.5),
         legend.position = "none",
-        strip.text = element_text(size = 18)
+        strip.text = element_text(size = 18),
+
+        legend.title = element_text(size=20)
     )
-    + scale_fill_manual(values = color_pallete_for_dose)
+    + scale_fill_manual(values = color_palette_dose)
     # add color to jitter points
-    + scale_color_manual(values = points_color_pallete_for_dose)
+    + scale_color_manual(values = points_color_palette_for_dose)
 )
 intensity_plot
 
@@ -123,36 +113,23 @@ umap_file_path <- file.path("../../../data/umap/","terminal_umap_transformed.par
 umap_file_path <- normalizePath(umap_file_path)
 umap_df <- arrow::read_parquet(umap_file_path)
 # add nM to the dose column
-umap_df$Metadata_dose <- paste0(umap_df$Metadata_dose, " nM")
+# umap_df$Metadata_dose <- paste0(umap_df$Metadata_dose, " nM")
 # make the dose a factor with levels
 umap_df$Metadata_dose <- factor(umap_df$Metadata_dose, levels = c(
-    "0 nM",
-    "0.61 nM",
-    "1.22 nM",
-    "2.44 nM",
-    "4.88 nM",
-    "9.77 nM",
-    "19.53 nM",
-    "39.06 nM",
-    "78.13 nM",
-    "156.25 nM"
+    "0",
+    "0.61",
+    "1.22",
+    "2.44",
+    "4.88",
+    "9.77",
+    "19.53",
+    "39.06",
+    "78.13",
+    "156.25"
     )
     )
 
 
-## Select only some of the doeses
-color_pallete_for_dose <- c(
-    "0 nM" = "#85FF33",
-    "0.61 nM" = "#75FF1A",
-    "1.22 nM" = "#62FF00",
-    "2.44 nM" = "#4DC507",
-    "4.88 nM" = "#398E0B",
-    "9.77 nM" = "#265A0C",
-    "19.53 nM" = "#132B08",
-    "39.06 nM" = "#620B8E",
-    "78.13 nM" = "#410C5A",
-    "156.25 nM" = "#21082B"
-)
 # make a ggplot of the umap
 width <- 8
 height <- 8
@@ -177,15 +154,15 @@ umap_plot <- (
 
 
         )
-    + scale_color_manual(values = color_pallete_for_dose)
+    + scale_color_manual(values = color_palette_dose)
     + guides(
         color = guide_legend(
-            override.aes = list(size = 5),
-            title = "Dose (nM)",
+            override.aes = list(size = 5, alpha = 1),
+            title = "Staurosporine dose (nM)",
             title.position = "top",
             title.hjust = 0.5,
             # make them horizontal
-            nrow = 3,
+            nrow = 2,
         )
     )
 

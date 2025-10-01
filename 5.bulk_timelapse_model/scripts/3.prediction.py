@@ -9,7 +9,6 @@ import pathlib
 import joblib
 import numpy as np
 import pandas as pd
-import pycytominer
 
 # In[2]:
 
@@ -31,34 +30,14 @@ terminal_column_names = pathlib.Path("../results/terminal_columns.txt").resolve(
 terminal_column_names = [
     line.strip() for line in terminal_column_names.read_text().splitlines()
 ]
-
+models_path = pathlib.Path("../models").resolve()
 data_split_df = pd.read_parquet(train_test_wells_path)
 df = pd.read_parquet(profile_data_path)
-metadata_cols = [cols for cols in df.columns if "Metadata" in cols]
-features_cols = [cols for cols in df.columns if "Metadata" not in cols]
-features_cols = features_cols
-aggregate_df = pycytominer.aggregate(
-    population_df=df,
-    strata=["Metadata_Well", "Metadata_Time"],
-    features=features_cols,
-    operation="median",
-)
-
-
-metadata_df = df[metadata_cols]
-metadata_df = metadata_df.drop_duplicates(subset=["Metadata_Well", "Metadata_Time"])
-metadata_df = metadata_df.reset_index(drop=True)
-aggregate_df = pd.merge(
-    metadata_df, aggregate_df, on=["Metadata_Well", "Metadata_Time"]
-)
-print(aggregate_df.shape)
-aggregate_df.head()
 
 
 # In[3]:
 
 
-models_path = pathlib.Path("../models/").resolve(strict=True)
 models = pathlib.Path(models_path).glob("*.joblib")
 models_dict = {
     "model_name": [],
@@ -74,8 +53,8 @@ for model_path in models:
         "shuffled" if "shuffled" in model_path.name else "not_shuffled"
     )
     models_dict["feature"].append(
-        model_path.name.split("singlefeature")[1].strip(".joblib").strip("_")
-        if "singlefeature" in model_path.name
+        "Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV"
+        if "terminal_feature" in model_path.name
         else "all_terminal_features"
     )
 
@@ -84,15 +63,15 @@ for model_path in models:
 
 
 # map the train/test wells to the aggregate data
-aggregate_df["Metadata_data_split"] = aggregate_df["Metadata_Well"].map(
+df["Metadata_data_split"] = df["Metadata_Well"].map(
     data_split_df.set_index("Metadata_Well")["data_split"]
 )
-data_split = aggregate_df.pop("Metadata_data_split")
-aggregate_df.insert(0, "Metadata_data_split", data_split)
-aggregate_df["Metadata_Time"] = aggregate_df["Metadata_Time"].astype(float)
+data_split = df.pop("Metadata_data_split")
+df.insert(0, "Metadata_data_split", data_split)
+df["Metadata_Time"] = df["Metadata_Time"].astype(float)
 # drop NaN values in the terminal columns
-aggregate_df = aggregate_df.dropna(subset="Metadata_data_split")
-aggregate_df["Metadata_data_split"].unique()
+df = df.dropna(subset="Metadata_data_split")
+df["Metadata_data_split"].unique()
 
 
 # In[5]:
@@ -100,7 +79,7 @@ aggregate_df["Metadata_data_split"].unique()
 
 # if the data_split is train and the time is not 12 then set to non_trained_pair
 # where 12 is the last time point
-aggregate_df["Metadata_data_split"] = aggregate_df.apply(
+df["Metadata_data_split"] = df.apply(
     lambda x: (
         "non_trained_pair"
         if (x["Metadata_data_split"] == "train" and x["Metadata_Time"] != 12.0)
@@ -113,8 +92,8 @@ aggregate_df["Metadata_data_split"] = aggregate_df.apply(
 # In[6]:
 
 
-metadata_columns = [x for x in aggregate_df.columns if "metadata" in x.lower()]
-aggregate_features_df = aggregate_df.drop(columns=metadata_columns, errors="ignore")
+metadata_columns = [x for x in df.columns if "metadata" in x.lower()]
+aggregate_features_df = df.drop(columns=metadata_columns, errors="ignore")
 
 
 # In[7]:
@@ -135,7 +114,7 @@ for i, model_name in enumerate(models_dict["feature"]):
             model.predict(aggregate_features_df),
             columns=terminal_column_names,
         )
-    predicted_df[metadata_columns] = aggregate_df[metadata_columns]
+    predicted_df[metadata_columns] = df[metadata_columns]
     predicted_df["shuffled"] = models_dict["shuffled"][i]
     # drop nan value
     predicted_df = predicted_df.dropna()
