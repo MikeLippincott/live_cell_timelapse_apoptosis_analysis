@@ -353,7 +353,7 @@ if not (composite ^ psuedo_color):
     raise ValueError("Either composite or psuedo_color must be True, but not both.")
 total = 0
 written = 0
-existsing = 0
+existing = 0
 for well_fov in tqdm(
     df["Metadata_Well_FOV"].unique(),
     desc="Processing well_fov",
