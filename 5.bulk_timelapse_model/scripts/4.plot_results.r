@@ -118,6 +118,34 @@ pcadf <- pcadf[, apply(pcadf, 2, function(x) var(x, na.rm = TRUE) != 0)]
 
 head(pcadf)
 
+# scree plot to see how many components to keep
+pca <- prcomp(pcadf, center = TRUE, rank. = 2, scale. = TRUE)
+scree_data <- data.frame(
+    PC = 1:length(pca$sdev),
+    Variance = (pca$sdev)^2,
+    Proportion = (pca$sdev)^2 / sum((pca$sdev)^2)
+)
+scree_plot <- (
+    ggplot(scree_data, aes(x = PC, y = Variance, group = 1))
+    + geom_bar(stat = "identity", fill = "lightblue", color = "black")
+    + plot_themes
+    + labs(
+        title = "Scree plot",
+        x = "Principal Component",
+        y = "Variance"
+    )
+    + theme(
+        axis.text.x = element_text(angle = 90, hjust = 1)
+    )
+)
+scree_plot
+# zoom in on the first 25 components
+scree_plot_zoom <- (
+    scree_plot
+    + coord_cartesian(xlim = c(1, 25))
+)
+scree_plot_zoom
+
 
 pca <- prcomp(pcadf, center = TRUE, rank. = 2, scale. = TRUE)
 # get the pca of the results
@@ -173,10 +201,7 @@ pca1_plot <- (
     + theme_minimal()
     + facet_grid(Metadata_data_split ~ shuffled)
     + geom_vline(xintercept = (30*12), linetype = "dashed", color = "black", size = 1)
-    + labs(x="Time (minutes)", y="PC1", color="Dose (nM)")
-    + plot_themes
-    + scale_color_manual(values = color_palette_dose)
-    + dose_guides_color
+    + labs(x="Time (minutes)", y="PC1", color="Stuarosporine Dose (nM)")
     + theme(
         # axis tick labels
         axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),

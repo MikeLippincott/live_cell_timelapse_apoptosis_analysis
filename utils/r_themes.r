@@ -63,4 +63,4 @@ plot_themes <- (
         strip.text = element_text(size = font_size -2),
     )
 )
-
+)
