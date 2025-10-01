@@ -4,6 +4,7 @@ suppressPackageStartupMessages(
         )
 )
 # color palette for plotting dose response curves
+
 color_palette_dose <- c(
     "0" = "#132B08", #132B08
     "0.61" = "#265A0C", #265A0C
@@ -16,6 +17,7 @@ color_palette_dose <- c(
     "78.13" = "#410C5A", #410C5A
     "156.25" = "#21082B" #21082B
 )
+
 turbo_colors <- viridis::turbo(10)
 color_palette_dose_turbo <- c(
     "0" = turbo_colors[1],
@@ -31,7 +33,6 @@ color_palette_dose_turbo <- c(
 
 temporal_palette <- c(
     "#008CF5", "#0079E7", "#0066D9", "#0053CB", "#0040BD", "#002D9F", "#001A91", "#000781", "#000570", "#000460", "#000350", "#000240", "#000130"
-
 )
 
 dose_guides_color <- guides(
@@ -62,5 +63,4 @@ plot_themes <- (
         axis.text.y = element_text(size = font_size),
         strip.text = element_text(size = font_size -2),
     )
-)
 )
