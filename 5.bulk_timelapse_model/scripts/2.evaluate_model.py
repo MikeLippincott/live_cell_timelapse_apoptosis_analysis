@@ -86,7 +86,6 @@ single_feature = "Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV"
 
 
 # In[5]:
-# In[6]:
 
 
 terminal_df = profile_df[terminal_column_names]

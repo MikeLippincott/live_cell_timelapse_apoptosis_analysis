@@ -29,9 +29,8 @@ mse_plot <- (
         y = "Mean Squared Error (MSE)"
     )
     + theme(text = element_text(size = 16))
+    + guides(fill = guide_legend(title = "Model Type"))
 )
-save_path <- file.path("..", "results", "mse_plot.png")
-ggsave(save_path, plot = mse_plot, width = 8, height = 6, dpi = 300)
 mse_plot
 
 r2_plot <- (
@@ -47,7 +46,30 @@ r2_plot <- (
     )
     + ylim(min(df$r2) - 0.1, 1)
     + theme(text = element_text(size = 16))
+    + guides(fill = guide_legend(title = "Model Type"))
+
 )
-save_path <- file.path("..", "results", "r2_plot.png")
-ggsave(save_path, plot = r2_plot, width = 8, height = 6, dpi = 300)
 r2_plot
+
+width <- 16
+height <- 10
+dpi <- 600
+options(repr.plot.width = width, repr.plot.height = height, repr.plot.res = dpi)
+final_plot <- (
+    mse_plot
+    + r2_plot
+    + plot_layout(nrow = 1, guides = "collect")
+    + plot_annotation(tag_levels = 'A') & theme(plot.tag = element_text(size = 24))
+)
+png(
+    filename = file.path("..", "figures", "model_performances.png"),
+    width = width,
+    height = height,
+    units = "in",
+    res = dpi
+)
+final_plot
+dev.off()
+final_plot
+
+
