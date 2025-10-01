@@ -178,7 +178,7 @@ row_compartment = rowAnnotation(
         title_gp = gpar(fontsize = 16, angle = 0, fontface = "bold", hjust = 1.0),
         labels_gp = gpar(fontsize = 16,
         title = gpar(fontsize = 16))),
-    annotation_name_side = "bottom",
+    annotation_name_side = "top",
     annotation_name_gp = gpar(fontsize = 16),
     # color
     col = list(
@@ -190,16 +190,16 @@ row_compartment = rowAnnotation(
     )
 )
 row_measurement = rowAnnotation(
-    FeatureGroup = features$Measurement,
+    `Feature group` = features$Measurement,
            annotation_legend_param = list(
         title_position = "topcenter",
         title_gp = gpar(fontsize = 16, angle = 0, fontface = "bold", hjust = 0.5),
         labels_gp = gpar(fontsize = 16,
         title = gpar(fontsize = 16))),
-    annotation_name_side = "bottom",
+    annotation_name_side = "top",
     annotation_name_gp = gpar(fontsize = 16),
     col = list(
-            FeatureGroup = c(
+            `Feature group` = c(
             "AreaShape" = brewer.pal(8, "Paired")[1],
             "Correlation" = brewer.pal(8, "Paired")[2],
             "Granularity" = brewer.pal(8, "Paired")[3],
@@ -232,7 +232,7 @@ row_channel = rowAnnotation(
 
 
 
-    annotation_name_side = "bottom",
+    annotation_name_side = "top",
     # make font size bigger
     annotation_name_gp = gpar(fontsize = 16),
     col = list(
@@ -286,7 +286,7 @@ for (dose in unique(df$Metadata_dose)) {
 
             show_heatmap_legend = TRUE,
             heatmap_legend_param = list(
-                        title = "Feature\nValue",
+                        title = "Feature\nvalue",
                         title_position = "topcenter",
                         # direction = "horizontal",
                         title_gp = gpar(fontsize = 16, angle = 0, fontface = "bold", hjust = 1.0),
@@ -314,7 +314,7 @@ for (dose in unique(df$Metadata_dose)) {
 
             show_heatmap_legend = FALSE,
             heatmap_legend_param = list(
-                        title = "Feature\nValue",
+                        title = "Feature\nvalue",
                         title_position = "topcenter",
                         title_gp = gpar(fontsize = 16, angle = 0, fontface = "bold", hjust = 1.0),
                         labels_gp = gpar(fontsize = 16),
@@ -324,12 +324,14 @@ for (dose in unique(df$Metadata_dose)) {
                         ),
             row_dend_width = unit(2, "cm"),
             column_title = paste0(dose," uM"),
-            top_annotation = column_anno
+            top_annotation = column_anno,
+
         )
     }
     # add the heatmap to the list
     heatmap_list <- heatmap_list + heatmap_plot
 }
+
 
 width <- 10
 height <- 5
@@ -340,8 +342,8 @@ cell_count_v_time_plot_colored_by_dose <- (
     + scale_color_manual(values = color_palette_dose)
     + labs(
         x = "Time (minutes)",
-        y = "Cell Count",
-        color = "Stuarosporine\nDose (nM)",
+        y = "Cell count",
+        color = "Stuarosporine\ndose (nM)",
     )
     + dose_guides_color
     + plot_themes
@@ -354,7 +356,7 @@ cell_count_v_time_plot_colored_by_dose <- (
         axis.title = element_text(size = 16, face = "bold"),
         axis.text = element_text(size = 14)
     )
-    + guides(color = guide_legend(ncol = 3))
+    + guides(color = guide_legend(ncol = 2))
 
 )
 cell_count_v_time_plot_colored_by_dose
@@ -386,11 +388,11 @@ final_figure <- (
     ))
     + plot_layout(
         design = layout,
-        heights = c(1, 3)
+        heights = c(0.33, 0.66)
     )
     + plot_annotation(tag_levels = 'A') & theme(plot.tag = element_text(size = 28))
 )
-png(filename = paste0(figure_path, "filtered_features.png"), width = width, height = height, units = "in", res = 600)
+png(filename = paste0(figure_path, "aggregate_heatmap_CP_features.png"), width = width, height = height, units = "in", res = 600)
 final_figure
 dev.off()
 final_figure
