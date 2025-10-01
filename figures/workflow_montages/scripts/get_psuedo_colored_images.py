@@ -46,16 +46,16 @@ composite_or_single_channel = args.composite_or_single_channel
 print(f"composite_or_single_channel: {composite_or_single_channel}")
 if composite_or_single_channel == "True":
     composite = True
-    psuedo_color = False
+    pseudo_color = False
 else:
     composite = False
-    psuedo_color = True
-print(f"composite: {composite}, psuedo_color: {psuedo_color}")
+    pseudo_color = True
+print(f"composite: {composite}, pseudo_color: {pseudo_color}")
 
 
 # ## Functions
 
-# In[3]:
+# In[ ]:
 
 
 def normalize_image(image: np.ndarray) -> np.ndarray:
@@ -74,7 +74,10 @@ def normalize_image(image: np.ndarray) -> np.ndarray:
     """
     image = image.astype(np.float32)
     image -= image.min()
-    image /= image.max()
+    try:
+        image /= image.max()
+    except ZeroDivisionError:
+        raise ValueError("Maximum value of the image is zero, cannot normalize.")
     image *= 255.0
     return image.astype(np.uint8)
 
@@ -105,10 +108,9 @@ def make_composite_image(
     PIL.Image.Image
         Composite image in CYMK format. Where the channels are:
         - C: DNA (blue)
-        - M: 488_1 (magenta)
+        - M: 488_1 (magenta) + 488_2 (magenta)
         - Y: 561 (yellow)
-        - K: 488_2 (green)
-    """
+        - K: Not used"""
     # Load the images
     image1 = tifffile.imread(image1_path)
     image2 = tifffile.imread(image2_path)
@@ -142,11 +144,10 @@ def make_composite_image(
     enhancer = ImageEnhance.Contrast(composite)
     composite = enhancer.enhance(2)  # Increase contrast
     enhancer = ImageEnhance.Brightness(composite)
-    # composite = enhancer.enhance(1.5)  # Increase brightness
     return composite
 
 
-def make_psuedo_color_image(
+def make_pseudo_color_image(
     image1_path: pathlib.Path,  # yellow
     image2_path: pathlib.Path,  # green
     image3_path: pathlib.Path,  # red
@@ -169,11 +170,11 @@ def make_psuedo_color_image(
     Returns
     -------
     PIL.Image.Image
-        Composite image in CYMK format. Where the channels are:
-        - C: DNA (blue)
-        - M: 488_1 (magenta)
-        - Y: 561 (yellow)
-        - K: 488_2 (green)
+        pseudo color image. Where the channels are:
+        - DNA (cyan)
+        - 488_1 (magenta)
+        - 561 (yellow)
+        - 488_2 (green)
     """
     # Load the images
     image1 = tifffile.imread(image1_path)
@@ -228,11 +229,11 @@ def scale_image(image: PIL.Image.Image, scale_factor: int = 4) -> PIL.Image.Imag
     return image.resize(new_size, Image.NEAREST)
 
 
-def generate_image_pannel_whole_image(
+def generate_image_panel_whole_image(
     df: pd.DataFrame,
     input_file_parent_path: pathlib.Path,
     composite: bool = True,
-    psuedo_color: bool = False,
+    pseudo_color: bool = False,
 ) -> pd.DataFrame:
     """
     Generate a DataFrame containing composite images for a specific cell over time.
@@ -245,14 +246,18 @@ def generate_image_pannel_whole_image(
         Each df should contain only one well_fov.
     composite : bool, optional
         Whether to generate composite images, by default True.
-    psuedo_color : bool, optional
-        Whether to generate psuedo-colored images, by default False.
+    pseudo_color : bool, optional
+        Whether to generate pseudo-colored images, by default False.
 
     Returns
     -------
     pd.DataFrame
         DataFrame with columns: single_cell_id, well_fov, composite, time, dose.
     """
+    # check that composite and pseudo_color are not both True or both False
+    if composite == pseudo_color:
+        raise ValueError("composite and pseudo_color cannot be both True or both False")
+
     df = df.sort_values("Metadata_Time")
 
     well_fov = df["Metadata_Well_FOV"].unique()[0]
@@ -288,7 +293,7 @@ def generate_image_pannel_whole_image(
         output_dict["composite"].append(composite_image)
         output_dict["time"].append(df["Metadata_Time"].values[0])
         output_dict["dose"].append(df["Metadata_dose"].values[0])
-    if psuedo_color:
+    if pseudo_color:
         output_dict = {
             "well_fov": [],
             "cyan": [],
@@ -298,7 +303,7 @@ def generate_image_pannel_whole_image(
             "time": [],
             "dose": [],
         }
-        cyan, magenta, yellow, green = make_psuedo_color_image(
+        cyan, magenta, yellow, green = make_pseudo_color_image(
             image1_path=image1_path,
             image2_path=image2_path,
             image3_path=image3_path,
@@ -329,7 +334,7 @@ def generate_image_pannel_whole_image(
     return output_df
 
 
-# ## Load data and get psuedo colored images
+# ## Load data and get pseudo colored images
 
 # In[4]:
 
@@ -344,13 +349,13 @@ df["Metadata_Time"].sort_values()
 df.head()
 
 
-# In[5]:
+# In[ ]:
 
 
 list_of_dfs = []
 # check if both are false or true, only one can be true
-if not (composite ^ psuedo_color):
-    raise ValueError("Either composite or psuedo_color must be True, but not both.")
+if not (composite ^ pseudo_color):
+    raise ValueError("Either composite or pseudo_color must be True, but not both.")
 total = 0
 written = 0
 existing = 0
@@ -377,11 +382,11 @@ for well_fov in tqdm(
         tmp_time_df = tmp_time_df.drop_duplicates(
             subset=["Metadata_Well_FOV"]
         )  # Remove inplace=True
-        output_df = generate_image_pannel_whole_image(
+        output_df = generate_image_panel_whole_image(
             df=tmp_time_df,
             input_file_parent_path=input_file_parent_path,
             composite=composite,
-            psuedo_color=psuedo_color,
+            pseudo_color=pseudo_color,
         )
         if composite:
             image = output_df["composite"][0]
@@ -396,7 +401,7 @@ for well_fov in tqdm(
                 written += 1
             else:
                 existsing += 1
-        if psuedo_color:
+        if pseudo_color:
             cyan, magenta, yellow, green = (
                 output_df["cyan"][0],
                 output_df["magenta"][0],
@@ -405,7 +410,7 @@ for well_fov in tqdm(
             )
             # save path
             output_save_path = pathlib.Path(
-                f"../data/whole_image_psuedocolor_images/{well_fov}_{timepoint:03d}_cyan.png"
+                f"../data/whole_image_pseudocolor_images/{well_fov}_{timepoint:03d}_cyan.png"
             )
             total += 4
             output_save_path.parent.mkdir(parents=True, exist_ok=True)
@@ -415,7 +420,7 @@ for well_fov in tqdm(
             else:
                 existsing += 1
             output_save_path = pathlib.Path(
-                f"../data/whole_image_psuedocolor_images/{well_fov}_{timepoint:03d}_magenta.png"
+                f"../data/whole_image_pseudocolor_images/{well_fov}_{timepoint:03d}_magenta.png"
             )
             if not output_save_path.exists():
                 magenta.save(output_save_path)
@@ -423,7 +428,7 @@ for well_fov in tqdm(
             else:
                 existsing += 1
             output_save_path = pathlib.Path(
-                f"../data/whole_image_psuedocolor_images/{well_fov}_{timepoint:03d}_yellow.png"
+                f"../data/whole_image_pseudocolor_images/{well_fov}_{timepoint:03d}_yellow.png"
             )
             if not output_save_path.exists():
                 yellow.save(output_save_path)
@@ -431,7 +436,7 @@ for well_fov in tqdm(
             else:
                 existsing += 1
             output_save_path = pathlib.Path(
-                f"../data/whole_image_psuedocolor_images/{well_fov}_{timepoint:03d}_green.png"
+                f"../data/whole_image_pseudocolor_images/{well_fov}_{timepoint:03d}_green.png"
             )
             if not output_save_path.exists():
                 green.save(output_save_path)
