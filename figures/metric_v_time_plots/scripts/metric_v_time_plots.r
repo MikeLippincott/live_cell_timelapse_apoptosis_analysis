@@ -184,7 +184,7 @@ umap_plot_facet <- (
     + labs(
         x = "UMAP 0",
         y = "UMAP 1",
-        color = "Time (minutes)",
+        color = "Time\n(minutes)",
     )
     + facet_wrap(Metadata_dose_w_unit~., nrow = 2)
     + guides(
@@ -193,12 +193,15 @@ umap_plot_facet <- (
             title.hjust = 0.5,
             title.theme = element_text(size = 24),
             # make the legend longer
-            barwidth = 20,
+            barwidth = 2,
+            # make the color bar on vertical
+            barheight = 15,
         ))
     + plot_themes
     # override the facet strip text size
     + theme(
-        strip.text = element_text(size = font_size - 5)
+        strip.text = element_text(size = font_size - 5),
+        legend.position = "right",
     )
 )
 umap_plot_facet
@@ -265,8 +268,6 @@ umap_centroid_plot <- (
 umap_centroid_plot
 
 
-umap_plot_facet <- umap_plot_facet + theme(legend.position = "none")
-
 width <- 17
 height <- 15
 options(repr.plot.width=width, repr.plot.height=height)
@@ -277,7 +278,7 @@ BC
 metric_v_time_final_plot <- (
     umap_plot_facet
     + umap_centroid_plot
-    + mAP_plot
+    + wrap_elements(full = mAP_plot)
 
     + plot_layout(
         design = layout,
