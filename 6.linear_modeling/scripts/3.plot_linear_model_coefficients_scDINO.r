@@ -329,7 +329,7 @@ final_plot <- (
 )
 plot_file_path <- file.path(
     plot_save_dir,
-    "final_figure_lm_coefficients_and_venn_diagrams_CP_scDINO.png"
+    "final_figure_lm_coefficients_and_venn_diagrams_scDINO.png"
 )
 png(
    filename = plot_file_path,
