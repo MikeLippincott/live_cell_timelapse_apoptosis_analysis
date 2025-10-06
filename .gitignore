@@ -18,3 +18,5 @@ one_off_analysis/results/*
 6.linear_modeling/notebooks/VennDiagram*.log*
 7.sc_timelapse_model/results/*
 7.sc_timelapse_model/models/*
+
+figures/montages/figures/montages_videos/*

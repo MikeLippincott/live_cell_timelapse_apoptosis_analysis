@@ -27,5 +27,6 @@ dependencies:
   - conda-forge::colorcet
   - conda-forge::bokeh
   - conda-forge::plotly
+  - conda-forge::imagemagick
   - pip:
     - copairs==0.5.0
