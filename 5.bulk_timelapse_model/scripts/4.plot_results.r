@@ -135,6 +135,8 @@ pcadf <- pcadf[, apply(pcadf, 2, function(x) var(x, na.rm = TRUE) != 0)]
 pca <- prcomp(pcadf, center = TRUE, rank. = 2, scale. = TRUE)
 # get the pca of the results
 pca_df <- data.frame(pca$x)
+pca_df$PC1_var <- (pca$sdev[1]^2) / sum(pca$sdev^2) * 100
+pca_df$PC2_var <- (pca$sdev[2]^2) / sum(pca$sdev^2) * 100
 # add the pca to the merged_results dataframe
 pca_df <- cbind(pca_df, merged_results[, metadata_columns])
 
@@ -215,7 +217,7 @@ pca2_plot <- (
     + theme_minimal()
     + facet_grid(Metadata_data_split ~ shuffled)
     + geom_vline(xintercept = (30*12), linetype = "dashed", color = "black", size = 1)
-    + labs(x="Time (minutes)", y="PC2", color="Stuarosporine Dose (nM)")
+    + labs(x="Time (minutes)", y="PC2", color="Staurosporine Dose (nM)")
     + plot_themes
     + scale_color_manual(values = color_palette_dose)
     + guides(color = guide_legend( override.aes = list(size = 5, alpha = 1)))
@@ -257,30 +259,45 @@ pca_df$Metadata_Time <- factor(
     )
 )
 
+# Create background data for just the Terminal facet
+terminal_bg_data <- pca_df %>%
+  filter(Metadata_Time == "Terminal") %>%
+  summarise(
+    Metadata_Time = "Terminal",
+    xmin = -Inf,
+    xmax = Inf,
+    ymin = -Inf,
+    ymax = Inf
+  ) %>%
+  slice(1)  # Take only one row
+
 # plot PCA1 vs PCA2 over time
 width <- 15
 height <- 7
 options(repr.plot.width=width, repr.plot.height=height)
 pca_over_time_plot <- (
     ggplot(pca_df, aes(x = PC1, y = PC2, color = Metadata_dose))
+    # Add yellow background rectangle only for Terminal facet
+    + geom_rect(data = terminal_bg_data,
+                aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+                fill = "yellow", alpha = 0.2, inherit.aes = FALSE)
     + geom_point(aes(shape = Metadata_shuffle_plus_data_split), size = 5, alpha = 0.7)
     + theme_minimal()
     + facet_wrap( ~ Metadata_Time, ncol = 7)
-    + labs(x="PC1", y="PC2", color="Stuarosporine Dose (nM)")
+    + labs(
+        x=paste0("PC1 (", round(pca_df$PC1_var[1],2), "% explained variance)"),
+        y=paste0("PC2 (", round(pca_df$PC2_var[1],2), "% explained variance)"),
+        color="Staurosporine Dose (nM)"
+        )
     + plot_themes
     + scale_color_manual(values = color_palette_dose)
     + scale_shape_manual(values = c(16, 17, 1, 2), name = "Shuffle + data split")
-
     + dose_guides_color
     + shuffle_guides_shape
-    # spread the x axis ticks out
-    # + scale_x_continuous(breaks = seq(-80, 20,by = 40))
     + theme(
         # axis tick labels
         axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
     )
-
-
 )
 ggsave(
     filename = "../figures/pca_over_time.png",
@@ -433,8 +450,8 @@ layout <- "
 AABB
 CCCC
 "
-height <- 15
-width <- 15
+height <- 14
+width <- 17
 options(repr.plot.width=width, repr.plot.height=height)
 final_plot <- (
     # workflow_figure_raster
