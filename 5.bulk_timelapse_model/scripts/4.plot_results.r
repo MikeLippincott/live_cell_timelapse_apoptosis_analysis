@@ -1,4 +1,7 @@
-for (pkg in c("ggplot2", "dplyr", "patchwork", "ggplotify")) {
+for (pkg in c(
+    "ggplot2", "dplyr", "patchwork", "ggplotify", "umap"
+    )) {
+    # load the package quietly
     suppressPackageStartupMessages(
         suppressWarnings(
             library(
@@ -10,6 +13,7 @@ for (pkg in c("ggplot2", "dplyr", "patchwork", "ggplotify")) {
         )
     )
 }
+# load custom themes
 source("../../utils/r_themes.r")
 
 actual_results_file_path <- file.path("../../data/CP_aggregated/endpoints/aggregated_profile.parquet")
@@ -40,13 +44,24 @@ metadata_columns <- colnames(actual_results)[
 ]
 
 actual_results_single_annexinV <- actual_results %>%
-  select(c("Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV"))
+  select(c("Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV", "Metadata_shuffled"))
 
 # rename metadata_shuffled to shuffled
 actual_results$shuffled <- actual_results$Metadata_shuffled
 actual_results_single_annexinV$shuffled <- actual_results$Metadata_shuffled
-actual_results$Metadata_shuffled <- NULL
-actual_results_single_annexinV$Metadata_shuffled <- NULL
+# drop the Metadata_shuffled column
+actual_results <- actual_results %>%
+  select(-Metadata_shuffled)
+actual_results_single_annexinV <- actual_results_single_annexinV %>%
+  select(-Metadata_shuffled)
+# duplicate the actual results so that there are copies for the
+# train model, test model, shuffled train model, and shuffled test model
+actual_results <- rbind(actual_results, actual_results)
+actual_results_single_annexinV <- rbind(actual_results_single_annexinV, actual_results_single_annexinV)
+# add a column to indicate which model the row is for
+actual_results$shuffled <- rep(c("shuffled", "not_shuffled"), each = nrow(actual_results) / 2)
+actual_results_single_annexinV$shuffled <- rep(c("shuffled", "not_shuffled"), each = nrow(actual_results_single_annexinV) / 2)
+
 
 
 # merge the two dataframes on the columns "Metadata_Time" and "Metadata_dose" Metadata_Well
@@ -107,7 +122,7 @@ merged_results <- merged_results %>%
 
 
 merged_results <- merged_results %>% arrange(Metadata_Well, Metadata_Time)
-
+head(merged_results)
 
 # get the pca of the results
 metadata_columns <- c("Metadata_Time", "Metadata_dose", "Metadata_Well", "shuffled", "Metadata_data_split")
@@ -115,36 +130,6 @@ metadata_columns <- c("Metadata_Time", "Metadata_dose", "Metadata_Well", "shuffl
 pcadf <- merged_results[, !colnames(merged_results) %in% metadata_columns]
 pcadf <- pcadf[, sapply(pcadf, is.numeric)]  # keep only numeric columns
 pcadf <- pcadf[, apply(pcadf, 2, function(x) var(x, na.rm = TRUE) != 0)]
-
-head(pcadf)
-
-# scree plot to see how many components to keep
-pca <- prcomp(pcadf, center = TRUE, rank. = 2, scale. = TRUE)
-scree_data <- data.frame(
-    PC = 1:length(pca$sdev),
-    Variance = (pca$sdev)^2,
-    Proportion = (pca$sdev)^2 / sum((pca$sdev)^2)
-)
-scree_plot <- (
-    ggplot(scree_data, aes(x = PC, y = Variance, group = 1))
-    + geom_bar(stat = "identity", fill = "lightblue", color = "black")
-    + plot_themes
-    + labs(
-        title = "Scree plot",
-        x = "Principal Component",
-        y = "Variance"
-    )
-    + theme(
-        axis.text.x = element_text(angle = 90, hjust = 1)
-    )
-)
-scree_plot
-# zoom in on the first 25 components
-scree_plot_zoom <- (
-    scree_plot
-    + coord_cartesian(xlim = c(1, 25))
-)
-scree_plot_zoom
 
 
 pca <- prcomp(pcadf, center = TRUE, rank. = 2, scale. = TRUE)
@@ -201,7 +186,10 @@ pca1_plot <- (
     + theme_minimal()
     + facet_grid(Metadata_data_split ~ shuffled)
     + geom_vline(xintercept = (30*12), linetype = "dashed", color = "black", size = 1)
-    + labs(x="Time (minutes)", y="PC1", color="Stuarosporine Dose (nM)")
+    + labs(x="Time (minutes)", y="PC1", color="Dose (nM)")
+    + plot_themes
+    + scale_color_manual(values = color_palette_dose)
+    + dose_guides_color
     + theme(
         # axis tick labels
         axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
@@ -246,9 +234,9 @@ ggsave(
 )
 pca2_plot
 
-pca_df$Metadata_shuffle_plus_data_split <- paste0(pca_df$shuffled, "\n", pca_df$Metadata_data_split)
+pca_df$Metadata_shuffle_plus_data_split <- paste(pca_df$shuffled, pca_df$Metadata_data_split)
 pca_df$Metadata_Time <- paste0(pca_df$Metadata_Time, " min.")
-
+pca_df$Metadata_Time <- gsub("390 min.", "Terminal", pca_df$Metadata_Time)
 pca_df$Metadata_Time <- factor(
     pca_df$Metadata_Time,
     levels = c(
@@ -265,7 +253,7 @@ pca_df$Metadata_Time <- factor(
         '300 min.',
         '330 min.',
         '360 min.',
-        '390 min.'
+        'Terminal'
     )
 )
 
@@ -286,7 +274,7 @@ pca_over_time_plot <- (
     + dose_guides_color
     + shuffle_guides_shape
     # spread the x axis ticks out
-    + scale_x_continuous(breaks = seq(-80, 20,by = 40))
+    # + scale_x_continuous(breaks = seq(-80, 20,by = 40))
     + theme(
         # axis tick labels
         axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
@@ -316,7 +304,6 @@ Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV_path <- file.path(
 )
 
 Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV <- arrow::read_parquet(Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV_path)
-
 
 metadata_columns <- c("Metadata_Time", "Metadata_dose", "Metadata_Well", "shuffled", "Metadata_data_split")
 
@@ -395,7 +382,6 @@ Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV_plot <- (
     + facet_grid(Metadata_data_split ~ shuffled)
 
     + geom_vline(xintercept = (30*12), linetype = "dashed", color = "black", size = 1)
-    + geom_hline(yintercept = -0.2, linetype = "dashed", color = "black", size = 1)
 
     + labs(x="Time (minutes)", y="AnnexinV Integrated Intensity\nin the Cytoplasm", color="Dose (nM)")
     + plot_themes
@@ -405,6 +391,8 @@ Terminal_Cytoplasm_Intensity_IntegratedIntensity_AnnexinV_plot <- (
         # axis tick labels
         axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
     )
+    # add yellow background to the plot from x=360 to the end
+    + annotate("rect", xmin = 360, xmax = Inf, ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "yellow")
 
 
 )
