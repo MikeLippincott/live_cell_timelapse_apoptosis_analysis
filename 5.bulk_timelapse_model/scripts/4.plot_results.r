@@ -263,7 +263,7 @@ pca_df$Metadata_Time <- factor(
 terminal_bg_data <- pca_df %>%
   filter(Metadata_Time == "Terminal") %>%
   summarise(
-    Metadata_Time = "Terminal",
+    Metadata_Time = factor("Terminal", levels = levels(pca_df$Metadata_Time)),
     xmin = -Inf,
     xmax = Inf,
     ymin = -Inf,
@@ -307,7 +307,6 @@ ggsave(
     dpi = 600
 )
 pca_over_time_plot
-
 
 merged_results <- merged_results %>%
   mutate(Group = Metadata_Well) %>%
