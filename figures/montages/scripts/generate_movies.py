@@ -9,6 +9,8 @@
 
 
 import pathlib
+import sys
+import tomllib as tomli
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,9 +22,48 @@ from matplotlib import animation
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont
 from tqdm import tqdm
 
-# ## Functions
+sys.path.append(str(pathlib.Path("../../../utils/")))
+
+from scale_bar_util import add_scale_bar
+
+# ## Pathing and preprocessing
 
 # In[2]:
+
+
+umap_file_path = pathlib.Path(
+    "../../../data/umap/combined_umap_transformed.parquet"
+).resolve(strict=True)
+sc_video_path = pathlib.Path("../figures/montages_videos/single_cell/")
+well_fov_video_path = pathlib.Path("../figures/montages_videos/well_fov/")
+figure_gifs = pathlib.Path("../figures/figure_gifs/")
+image_metadata_toml_path = pathlib.Path("../../../utils/pixel_dimension.toml").resolve(
+    strict=True
+)
+sc_video_path.mkdir(parents=True, exist_ok=True)
+well_fov_video_path.mkdir(parents=True, exist_ok=True)
+figure_gifs.mkdir(parents=True, exist_ok=True)
+
+
+umap_df = pd.read_parquet(umap_file_path)
+# make the time column numeric
+umap_df["Metadata_Time"] = pd.to_numeric(umap_df["Metadata_Time"])
+umap_df["Metadata_Time"] = umap_df["Metadata_Time"].astype(int)
+umap_df["Metadata_Time"] = umap_df["Metadata_Time"] * 30
+umap_df["Metadata_Well_FOV"] = (
+    umap_df["Metadata_Well"].astype(str) + "_" + umap_df["Metadata_FOV"].astype(str)
+)
+INTERVAL = 400  # milliseconds
+
+# read the toml
+global PIXEL_SIZE_UM
+with open(image_metadata_toml_path, "rb") as f:
+    PIXEL_SIZE_UM = tomli.load(f)["pixel_size_um"]
+
+
+# ## Functions
+
+# In[3]:
 
 
 def normalize_image(image: np.ndarray) -> np.ndarray:
@@ -51,7 +92,8 @@ def make_composite_image(
     image1_path: pathlib.Path,  # yellow
     image2_path: pathlib.Path,  # green
     image3_path: pathlib.Path,  # red
-    image4_path: pathlib.Path,  # blue
+    image4_path: pathlib.Path,  # blue,
+    CYM_contrasts: list = [2, 2, 2],
 ) -> PIL.Image.Image:
     """
     Create a composite image from four input images.
@@ -76,6 +118,7 @@ def make_composite_image(
         - Y: 561 (yellow)
         - K: 488_2 (green)
     """
+    cyan_contrast, yellow_contrast, magenta_contrast = CYM_contrasts
     # Load the images
     image1 = tifffile.imread(image1_path)
     image2 = tifffile.imread(image2_path)
@@ -97,19 +140,25 @@ def make_composite_image(
     cyan = np.zeros((image1.shape[0], image1.shape[1], 3), dtype=np.uint8)
     cyan[..., 1] = image4  # green
     cyan[..., 2] = image4  # blue
+    cyan = Image.fromarray(cyan)
+    enhancer = ImageEnhance.Contrast(cyan)
+    cyan = enhancer.enhance(cyan_contrast)  # Increase contrast
     magenta = np.zeros((image1.shape[0], image1.shape[1], 3), dtype=np.uint8)
     magenta[..., 0] = image1  # red
     magenta[..., 2] = image1  # blue
+    magenta = Image.fromarray(magenta)
+    enhancer = ImageEnhance.Contrast(magenta)
+    magenta = enhancer.enhance(magenta_contrast)  # Increase contrast
     yellow = np.zeros((image1.shape[0], image1.shape[1], 3), dtype=np.uint8)
     yellow[..., 0] = image3  # red
     yellow[..., 1] = image3  # green
+    yellow = Image.fromarray(yellow)
+    enhancer = ImageEnhance.Contrast(yellow)
+    yellow = enhancer.enhance(yellow_contrast)  # Increase contrast
     composite = np.maximum(cyan, np.maximum(magenta, yellow))
-    # Convert to PIL Image for enhancement
+    # makee into a PIL image
     composite = Image.fromarray(composite)
-    enhancer = ImageEnhance.Contrast(composite)
-    composite = enhancer.enhance(2)  # Increase contrast
-    enhancer = ImageEnhance.Brightness(composite)
-    # composite = enhancer.enhance(1.5)  # Increase brightness
+
     return composite
 
 
@@ -185,11 +234,19 @@ def generate_sc_image_panel_df(
                 strict=True
             )
             composite_image = scale_image(
-                make_composite_image(
-                    image1_path=image1_path,
-                    image2_path=image2_path,
-                    image3_path=image3_path,
-                    image4_path=image4_path,
+                add_scale_bar(
+                    image=make_composite_image(
+                        image1_path=image1_path,
+                        image2_path=image2_path,
+                        image3_path=image3_path,
+                        image4_path=image4_path,
+                        CYM_contrasts=[2, 2, 2],  # C Y M
+                    ),
+                    scale_bar_length_um=10,
+                    scale_bar_height_px=5,
+                    print_text=False,
+                    pixel_size_um=PIXEL_SIZE_UM,
+                    padding=5,
                 )
             )
             output_dict["single_cell_id"].append(single_cell_id)
@@ -258,11 +315,19 @@ def generate_whole_FOV_image_panel_df(
                 f"{well_fov_path}/{row['Metadata_Image_FileName_DNA']}"
             ).resolve(strict=True)
             composite_image = scale_image(
-                make_composite_image(
-                    image1_path=image1_path,
-                    image2_path=image2_path,
-                    image3_path=image3_path,
-                    image4_path=image4_path,
+                add_scale_bar(
+                    image=make_composite_image(
+                        image1_path=image1_path,
+                        image2_path=image2_path,
+                        image3_path=image3_path,
+                        image4_path=image4_path,
+                        CYM_contrasts=[8, 5, 5],  # C Y M
+                    ),
+                    scale_bar_length_um=100,
+                    scale_bar_height_px=25,
+                    print_text=False,
+                    pixel_size_um=PIXEL_SIZE_UM,
+                    padding=25,
                 )
             )
             output_dict["well_fov"].append(well_fov)
@@ -376,33 +441,6 @@ def generate_gif(
         loop=0,
     )
     return video_file_path
-
-
-# ## Pathing and preprocessing
-
-# In[3]:
-
-
-umap_file_path = pathlib.Path(
-    "../../../data/umap/combined_umap_transformed.parquet"
-).resolve(strict=True)
-sc_video_path = pathlib.Path("../figures/montages_videos/single_cell/")
-well_fov_video_path = pathlib.Path("../figures/montages_videos/well_fov/")
-figure_gifs = pathlib.Path("../figures/figure_gifs/")
-sc_video_path.mkdir(parents=True, exist_ok=True)
-well_fov_video_path.mkdir(parents=True, exist_ok=True)
-figure_gifs.mkdir(parents=True, exist_ok=True)
-
-
-umap_df = pd.read_parquet(umap_file_path)
-# make the time column numeric
-umap_df["Metadata_Time"] = pd.to_numeric(umap_df["Metadata_Time"])
-umap_df["Metadata_Time"] = umap_df["Metadata_Time"].astype(int)
-umap_df["Metadata_Time"] = umap_df["Metadata_Time"] * 30
-umap_df["Metadata_Well_FOV"] = (
-    umap_df["Metadata_Well"].astype(str) + "_" + umap_df["Metadata_FOV"].astype(str)
-)
-INTERVAL = 400  # milliseconds
 
 
 # ## Get dfs containing cell tracks
