@@ -468,9 +468,32 @@ for well_fov in well_fovs:
 # In[5]:
 
 
+dict_of_cells = {
+    "C-02_0001": 23,
+    "C-03_0001": 28,
+    "C-04_0001": 35,
+    "C-05_0001": 44,
+    "C-06_0001": 106,
+    "C-07_0001": 109,
+    "C-08_0001": 35,
+    "C-09_0001": 22,
+    "C-10_0001": 101,
+    "C-11_0001": 141,
+}
+
+
+# In[6]:
+
+
 df = pd.DataFrame(track_ids)
 df = df.sort_values(by="well_fovs")
 df["well"] = df["well_fovs"].str.split("_").str[0]
+# get gifs for cells from static montage
+sampled_dfs = []
+for well_fov, cell_id in tqdm(dict_of_cells.items()):
+    sampled_dfs.append(generate_sc_image_panel_df(umap_df, well_fov, cell_id))
+sampled_df = pd.concat(sampled_dfs, ignore_index=True)
+
 # sample at random 5 cell track ids from each well
 seed = 0
 df = (
@@ -478,10 +501,11 @@ df = (
     .apply(lambda x: x.sample(5, random_state=seed), include_groups=False)
     .reset_index(drop=True)
 )
+df = pd.concat([df, sampled_df], axis=1, join="inner")
 df.head()
 
 
-# In[6]:
+# In[7]:
 
 
 for row in tqdm(
@@ -502,7 +526,7 @@ for row in tqdm(
 
 # ## Whole well FOV montages
 
-# In[7]:
+# In[8]:
 
 
 # well_fovs_df
@@ -530,7 +554,7 @@ well_fov_only_images.sort_values(
 well_fov_only_images = well_fov_only_images.reset_index(drop=True)
 
 
-# In[8]:
+# In[9]:
 
 
 for well_fov in tqdm(
@@ -538,6 +562,8 @@ for well_fov in tqdm(
     total=len(well_fov_only_images["Metadata_Well_FOV"].unique()),
     desc="Generating whole well FOV montages",
 ):
+    if pathlib.Path(f"{well_fov_video_path}/well_montage_well_{well_fov}.gif").exists():
+        continue
     # show the gif
     filename = generate_gif(
         generate_whole_FOV_image_panel_df(well_fov_only_images, well_fov),
@@ -549,7 +575,7 @@ for well_fov in tqdm(
 
 # ## umap montages
 
-# In[9]:
+# In[10]:
 
 
 for dose in umap_df["Metadata_dose"].unique():
