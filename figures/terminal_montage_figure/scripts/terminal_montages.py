@@ -9,6 +9,8 @@
 
 
 import pathlib
+import sys
+import tomllib as tomli
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,9 +19,59 @@ import PIL
 import tifffile
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont
 
-# ## Functions
+sys.path.append(str(pathlib.Path("../../../utils/")))
+
+from scale_bar_util import add_scale_bar
+
+# ## Pathing and preprocessing
 
 # In[2]:
+
+
+umap_file_path = pathlib.Path(
+    "../../../data/CP_feature_select/endpoints/features_selected_profile.parquet"
+).resolve(strict=True)
+image_metadata_toml_path = pathlib.Path("../../../utils/pixel_dimension.toml").resolve(
+    strict=True
+)
+montage_background_output_dir = pathlib.Path(
+    "../figures/terminal_montage.png"
+).resolve()
+# read the toml
+global PIXEL_SIZE_UM
+with open(image_metadata_toml_path, "rb") as f:
+    PIXEL_SIZE_UM = tomli.load(f)["pixel_size_um"]
+
+
+montage_background_output_dir.parent.mkdir(parents=True, exist_ok=True)
+df = pd.read_parquet(umap_file_path)
+df["Metadata_Well_FOV"] = df["Metadata_Well"] + "_F" + df["Metadata_FOV"].astype(str)
+# pd.set_option("display.max_columns", None)
+df["Metadata_Image_PathName_AnnexinV"][0]
+df["Metadata_Image_FileName_AnnexinV_full"] = df.apply(
+    lambda row: pathlib.Path(
+        f'/home/lippincm/4TB_A/live_cell_timelapse_apoptosis/2.cellprofiler_ic_processing/illum_directory/endpoint/20231017ChromaLive_endpoint_w_AnnexinV_2ch_MaxIP_{row["Metadata_Well"]}_F{row["Metadata_FOV"]}',
+        row["Metadata_Image_FileName_AnnexinV"],
+    ),
+    axis=1,
+)
+df["Metadata_Image_FileName_DNA_full"] = df.apply(
+    lambda row: pathlib.Path(
+        f'/home/lippincm/4TB_A/live_cell_timelapse_apoptosis/2.cellprofiler_ic_processing/illum_directory/endpoint/20231017ChromaLive_endpoint_w_AnnexinV_2ch_MaxIP_{row["Metadata_Well"]}_F{row["Metadata_FOV"]}',
+        row["Metadata_Image_FileName_DNA"],
+    ),
+    axis=1,
+)
+df.sort_values(by=["Metadata_Well_FOV"], inplace=True)
+df.drop_duplicates(subset=["Metadata_Well_FOV"], inplace=True)
+
+df.reset_index(drop=True, inplace=True)
+df.head()
+
+
+# ## Functions
+
+# In[3]:
 
 
 def normalize_image(image: np.ndarray) -> np.ndarray:
@@ -101,6 +153,16 @@ def make_composite_image(
     composite = Image.fromarray(composite)
     enhancer = ImageEnhance.Contrast(composite)
     composite = enhancer.enhance(4)  # Increase contrast
+
+    composite = add_scale_bar(
+        image=composite,
+        scale_bar_length_um=100,
+        scale_bar_height_px=25,
+        print_text=False,
+        pixel_size_um=PIXEL_SIZE_UM,
+        padding=25,
+    )
+
     return composite
 
 
@@ -175,46 +237,6 @@ def scale_image(image: PIL.Image.Image, scale_factor: int = 4) -> PIL.Image.Imag
     width, height = image.size
     new_size = (int(width * scale_factor), int(height * scale_factor))
     return image.resize(new_size, Image.NEAREST)
-
-
-# ## Pathing and preprocessing
-
-# In[3]:
-
-
-umap_file_path = pathlib.Path(
-    "../../../data/CP_feature_select/endpoints/features_selected_profile.parquet"
-).resolve(strict=True)
-
-montage_background_output_dir = pathlib.Path(
-    "../figures/terminal_montage.png"
-).resolve()
-
-montage_background_output_dir.parent.mkdir(parents=True, exist_ok=True)
-df = pd.read_parquet(umap_file_path)
-df["Metadata_Well_FOV"] = df["Metadata_Well"] + "_F" + df["Metadata_FOV"].astype(str)
-# pd.set_option("display.max_columns", None)
-df["Metadata_Image_PathName_AnnexinV"][0]
-df["Metadata_Image_FileName_AnnexinV_full"] = df.apply(
-    lambda row: pathlib.Path(
-        f'/home/lippincm/4TB_A/live_cell_timelapse_apoptosis/2.cellprofiler_ic_processing/illum_directory/endpoint/20231017ChromaLive_endpoint_w_AnnexinV_2ch_MaxIP_{row["Metadata_Well"]}_F{row["Metadata_FOV"]}',
-        row["Metadata_Image_FileName_AnnexinV"],
-    ),
-    axis=1,
-)
-df["Metadata_Image_FileName_DNA_full"] = df.apply(
-    lambda row: pathlib.Path(
-        f'/home/lippincm/4TB_A/live_cell_timelapse_apoptosis/2.cellprofiler_ic_processing/illum_directory/endpoint/20231017ChromaLive_endpoint_w_AnnexinV_2ch_MaxIP_{row["Metadata_Well"]}_F{row["Metadata_FOV"]}',
-        row["Metadata_Image_FileName_DNA"],
-    ),
-    axis=1,
-)
-
-df.sort_values(by=["Metadata_Well_FOV"], inplace=True)
-df.drop_duplicates(subset=["Metadata_Well_FOV"], inplace=True)
-
-df.reset_index(drop=True, inplace=True)
-df.head()
 
 
 # ## Get dfs containing cell tracks
