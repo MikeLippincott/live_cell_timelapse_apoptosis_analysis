@@ -5,10 +5,12 @@
 
 # ## Imports
 
-# In[1]:
+# In[2]:
 
 
 import pathlib
+import sys
+import tomllib as tomli
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,9 +19,51 @@ import PIL
 import tifffile
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont
 
+sys.path.append("../../../utils")
+from scale_bar_util import add_scale_bar
+
+# ## Pathing and preprocessing
+
+# In[4]:
+
+
+umap_file_path = pathlib.Path(
+    "../../../data/umap/combined_umap_transformed.parquet"
+).resolve(strict=True)
+image_metadata_toml_path = pathlib.Path("../../../utils/pixel_dimension.toml").resolve(
+    strict=True
+)
+large_montage_white_background_output_dir = pathlib.Path(
+    "../figures/large_montage_white_background.png"
+).resolve()
+large_montage_black_background_output_dir = pathlib.Path(
+    "../figures/large_montage_black_background.png"
+).resolve()
+mini_montage_white_background_output_dir = pathlib.Path(
+    "../figures/mini_montage_white_background.png"
+).resolve()
+mini_montage_black_background_output_dir = pathlib.Path(
+    "../figures/mini_montage_black_background.png"
+).resolve()
+mini_montage_black_background_output_dir.parent.mkdir(parents=True, exist_ok=True)
+umap_df = pd.read_parquet(umap_file_path)
+# make the time column numeric
+umap_df["Metadata_Time"] = pd.to_numeric(umap_df["Metadata_Time"])
+umap_df["Metadata_Time"] = umap_df["Metadata_Time"].astype(int)
+umap_df["Metadata_Time"] = umap_df["Metadata_Time"] * 30
+umap_df["Metadata_Well_FOV"] = (
+    umap_df["Metadata_Well"].astype(str) + "_" + umap_df["Metadata_FOV"].astype(str)
+)
+
+# read the toml
+global PIXEL_SIZE_UM
+with open(image_metadata_toml_path, "rb") as f:
+    PIXEL_SIZE_UM = tomli.load(f)["pixel_size_um"]
+
+
 # ## Functions
 
-# In[2]:
+# In[13]:
 
 
 def normalize_image(image: np.ndarray) -> np.ndarray:
@@ -106,7 +150,15 @@ def make_composite_image(
     enhancer = ImageEnhance.Contrast(composite)
     composite = enhancer.enhance(2)  # Increase contrast
     enhancer = ImageEnhance.Brightness(composite)
-    # composite = enhancer.enhance(1.5)  # Increase brightness
+
+    composite = add_scale_bar(
+        image=composite,
+        pixel_size_um=PIXEL_SIZE_UM,
+        scale_bar_length_um=10,  # um
+        scale_bar_height_px=5,  # pixels
+        print_text=False,
+        padding=10,  # pixels
+    )
     return composite
 
 
@@ -203,40 +255,9 @@ def generate_image_pannel_df(
     return output_df
 
 
-# ## Pathing and preprocessing
-
-# In[3]:
-
-
-umap_file_path = pathlib.Path(
-    "../../../3.generate_umap_and_PCA/results/UMAP/single-cell_profiles_CP_scDINO_umap.parquet"
-).resolve(strict=True)
-large_montage_white_background_output_dir = pathlib.Path(
-    "../figures/large_montage_white_background.png"
-).resolve()
-large_montage_black_background_output_dir = pathlib.Path(
-    "../figures/large_montage_black_background.png"
-).resolve()
-mini_montage_white_background_output_dir = pathlib.Path(
-    "../figures/mini_montage_white_background.png"
-).resolve()
-mini_montage_black_background_output_dir = pathlib.Path(
-    "../figures/mini_montage_black_background.png"
-).resolve()
-mini_montage_black_background_output_dir.parent.mkdir(parents=True, exist_ok=True)
-umap_df = pd.read_parquet(umap_file_path)
-# make the time column numeric
-umap_df["Metadata_Time"] = pd.to_numeric(umap_df["Metadata_Time"])
-umap_df["Metadata_Time"] = umap_df["Metadata_Time"].astype(int)
-umap_df["Metadata_Time"] = umap_df["Metadata_Time"] * 30
-umap_df["Metadata_Well_FOV"] = (
-    umap_df["Metadata_Well"].astype(str) + "_" + umap_df["Metadata_FOV"].astype(str)
-)
-
-
 # ## Get dfs containing cell tracks
 
-# In[4]:
+# In[14]:
 
 
 # get a random Metadata_track_id for a few wells
@@ -256,7 +277,7 @@ for well_fov in well_fovs:
         track_ids["track_id"].append(track_id)
 
 
-# In[5]:
+# In[15]:
 
 
 df = pd.DataFrame(track_ids)
@@ -264,7 +285,7 @@ df = df.sort_values(by="well_fovs")
 df.head()
 
 
-# In[6]:
+# In[16]:
 
 
 c02_df = generate_image_pannel_df(umap_df, "C-02_0001", 23)  # DMSO
@@ -281,7 +302,7 @@ c11_df = generate_image_pannel_df(umap_df, "C-11_0001", 141)  # 156.25
 
 # ## Full montage of all timepoints and all doeses
 
-# In[7]:
+# In[17]:
 
 
 for background in ["white", "black"]:
@@ -447,7 +468,7 @@ for background in ["white", "black"]:
 
 # ## Mini montage of selected doses
 
-# In[8]:
+# In[18]:
 
 
 for background in ["white", "black"]:
