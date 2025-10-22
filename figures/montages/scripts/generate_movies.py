@@ -63,7 +63,7 @@ with open(image_metadata_toml_path, "rb") as f:
 
 # ## Functions
 
-# In[3]:
+# In[ ]:
 
 
 def normalize_image(image: np.ndarray) -> np.ndarray:
@@ -120,16 +120,12 @@ def make_composite_image(
     """
     cyan_contrast, yellow_contrast, magenta_contrast = CYM_contrasts
     # Load the images
-    image1 = tifffile.imread(image1_path)
-    image2 = tifffile.imread(image2_path)
-    image3 = tifffile.imread(image3_path)
-    image4 = tifffile.imread(image4_path)
-
     # Normalize the images to the range [0, 255]
-    image1 = normalize_image(image1)  # 488_1
-    image2 = normalize_image(image2)  # 488_2
-    image3 = normalize_image(image3)  # 561
-    image4 = normalize_image(image4)  # DNA
+    image1 = normalize_image(tifffile.imread(image1_path))  # 488_1
+    image2 = normalize_image(tifffile.imread(image2_path))  # 488_2
+    image3 = normalize_image(tifffile.imread(image3_path))  # 561
+    image4 = normalize_image(tifffile.imread(image4_path))  # DNA
+
     # merge 488_1 and 488_2 into a single green channel by taking the max
     image1 = np.maximum(image1, image2)
     # make a cyan, magenta, yellow composite
@@ -137,19 +133,21 @@ def make_composite_image(
     # magenta = red + blue
     # yellow = red + green
     # composite = max(cyan, magenta, yellow)
-    cyan = np.zeros((image1.shape[0], image1.shape[1], 3), dtype=np.uint8)
+    template = np.zeros((image1.shape[0], image1.shape[1], 3), dtype=np.uint8)
+    cyan, magenta, yellow = template.copy(), template.copy(), template.copy()
+
     cyan[..., 1] = image4  # green
     cyan[..., 2] = image4  # blue
     cyan = Image.fromarray(cyan)
     enhancer = ImageEnhance.Contrast(cyan)
     cyan = enhancer.enhance(cyan_contrast)  # Increase contrast
-    magenta = np.zeros((image1.shape[0], image1.shape[1], 3), dtype=np.uint8)
+
     magenta[..., 0] = image1  # red
     magenta[..., 2] = image1  # blue
     magenta = Image.fromarray(magenta)
     enhancer = ImageEnhance.Contrast(magenta)
     magenta = enhancer.enhance(magenta_contrast)  # Increase contrast
-    yellow = np.zeros((image1.shape[0], image1.shape[1], 3), dtype=np.uint8)
+
     yellow[..., 0] = image3  # red
     yellow[..., 1] = image3  # green
     yellow = Image.fromarray(yellow)
@@ -348,7 +346,7 @@ def generate_whole_FOV_image_panel_df(
 def generate_gif(
     df: pd.DataFrame,
     save_path: pathlib.Path,
-    single_cell_crop_df: bool,
+    single_cell_crop_in_df: bool,
     interval: int,
 ) -> pathlib.Path:
     """
@@ -364,7 +362,7 @@ def generate_gif(
         The DataFrame should also contain columns for 'time' and 'dose'.
     save_path : pathlib.Path
         Parent directory Path to save the generated GIF.
-    single_cell_crop_df : bool
+    single_cell_crop_in_df : bool
         Whether the DataFrame contains single cell crop images.
         If True, the GIF filename will include the single cell ID.
         If False, the GIF filename will be for whole well FOVs.
@@ -422,7 +420,7 @@ def generate_gif(
 
         frames.append(frame_copy)
 
-    if single_cell_crop_df:
+    if single_cell_crop_in_df:
         single_cell_id = df["single_cell_id"].values[0]
         video_file_path = pathlib.Path(
             save_path
@@ -504,7 +502,7 @@ df = pd.concat([df, cells_to_add_df], ignore_index=True)
 df.head()
 
 
-# In[7]:
+# In[ ]:
 
 
 for row in tqdm(
@@ -516,7 +514,7 @@ for row in tqdm(
         filename = generate_gif(
             generate_sc_image_panel_df(umap_df, well_fov=well_fov, cell_id=track_id),
             save_path=sc_video_path,
-            single_cell_crop_df=True,
+            single_cell_crop_in_df=True,
             interval=INTERVAL,
         )
     except Exception as e:
@@ -553,7 +551,7 @@ well_fov_only_images.sort_values(
 well_fov_only_images = well_fov_only_images.reset_index(drop=True)
 
 
-# In[9]:
+# In[ ]:
 
 
 for well_fov in tqdm(
@@ -567,7 +565,7 @@ for well_fov in tqdm(
     filename = generate_gif(
         generate_whole_FOV_image_panel_df(well_fov_only_images, well_fov),
         save_path=well_fov_video_path,
-        single_cell_crop_df=False,
+        single_cell_crop_in_df=False,
         interval=INTERVAL,
     )
 
