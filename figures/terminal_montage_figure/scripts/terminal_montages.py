@@ -25,7 +25,7 @@ from scale_bar_util import add_scale_bar
 
 # ## Pathing and preprocessing
 
-# In[2]:
+# In[ ]:
 
 
 umap_file_path = pathlib.Path(
@@ -46,7 +46,6 @@ with open(image_metadata_toml_path, "rb") as f:
 montage_background_output_dir.parent.mkdir(parents=True, exist_ok=True)
 df = pd.read_parquet(umap_file_path)
 df["Metadata_Well_FOV"] = df["Metadata_Well"] + "_F" + df["Metadata_FOV"].astype(str)
-# pd.set_option("display.max_columns", None)
 df["Metadata_Image_PathName_AnnexinV"][0]
 df["Metadata_Image_FileName_AnnexinV_full"] = df.apply(
     lambda row: pathlib.Path(
