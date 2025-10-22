@@ -273,7 +273,9 @@ for (dose in unique(df$Metadata_dose)) {
     colnames(mat) <- single_dose_df$Metadata_Time
     mat <- mat[-1,]
 
-    if (dose == max(unique(df$Metadata_dose))) {
+    max_dose <- max(unique(df$Metadata_dose))
+
+    if (dose == max_dose) {
 
         heatmap_plot <- Heatmap(
             mat,
