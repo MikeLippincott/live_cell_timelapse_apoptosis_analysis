@@ -12,13 +12,12 @@ suppressPackageStartupMessages(suppressWarnings({
 source("../../../utils/r_themes.r")
 
 
-profile_file_path <- file.path("../../data/CP_feature_select/profiles/features_selected_profile.parquet")
+profile_file_path <- file.path("../../../data/CP_scDINO_features/combined_CP_scDINO_norm_fs_aggregated.parquet")
 figure_path <- file.path("../figures/")
 if (!dir.exists(figure_path)) {
     dir.create(figure_path, recursive = TRUE)
 }
 
-profile_file_path <- file.path("../../../data/CP_aggregated/profiles/aggregated_profile.parquet")
 cell_count_file_path <- file.path(
     "../../../2.cell_tracks_data/data/combined_stats.parquet"
 )
@@ -35,7 +34,12 @@ for (i in 1:ncol(df)) {
     }
 }
 # map each of the Time points to the actual timepoint
-df$Metadata_Time <- as.numeric(df$Metadata_Time * 60 /2 )
+df$Metadata_Time <- as.numeric(df$Metadata_Time) * 60 / 2
+head(df)
+
+# Drop CP features
+df <- df %>%
+    select(-ends_with("_CP"))
 head(df)
 
 cell_count_df$Metadata_dose <- as.character(cell_count_df$Metadata_dose)
@@ -79,6 +83,8 @@ df <- df %>%
 df$Metadata_cell_count <- df$cell_count
 # drop cell_count column
 df <- df %>% select(-cell_count)
+# sort by Metadata_Well, Metadata_dose, Metadata_Time
+df <- df %>% arrange(Metadata_Well, Metadata_dose, Metadata_Time)
 
 
 metadata_cols <- grep("Metadata_", colnames(df), value = TRUE)
@@ -112,9 +118,41 @@ features <- colnames(df)
 metadata_cols <- grep("Metadata_", colnames(df), value = TRUE)
 features <- features[!features %in% metadata_cols]
 features <- as.data.frame(features)
+# temporary
+# drop all rows that do not contain scDINO in Extra3
+# features <- features %>% filter(grepl("scDINO", features))
+# remove channel from string in features col
+features <- features %>%
+    mutate(
+        features = gsub("channel_", "", features),
+        features = gsub("channel", "", features, fixed = TRUE)
+        )
+
 # split the features by _ into multiple columns
 features <- features %>%
     separate(features, into = c("Compartment", "Measurement", "Metric", "Extra", "Extra1", "Extra2", "Extra3"), sep = "_", extra = "merge", fill = "right")
+
+# align the scDINO features with the CP features
+# if scDINO is in Extra2 then move the values of the Measurement to Extra
+features <- features %>%
+    mutate(
+        Extra = ifelse(grepl("scDINO", Extra1), Compartment, Extra)
+    )
+features <- features %>%
+    mutate(
+        Compartment = ifelse(grepl("scDINO", Extra1), Extra1, Compartment)
+    )
+features <- features %>%
+    mutate(
+        Measurement = ifelse(grepl("scDINO", Extra1), Extra1, Measurement)
+    )
+
+# add CL to Extra if Extra1 is 488 or 561
+features$Extra[features$Extra == "488-1"] <- paste0("CL_", features$Extra[features$Extra == "488-1"])
+features$Extra[features$Extra == "488-2"] <- paste0("CL_", features$Extra[features$Extra == "488-2"])
+features$Extra[features$Extra == "561"] <- paste0("CL_", features$Extra[features$Extra == "561"])
+
+
 # clean up the features columns
 # if Extra is NA then replace with None
 features$Extra[is.na(features$Extra)] <- "None"
@@ -133,13 +171,18 @@ features$Extra1[features$Extra1 == "488"] <- paste0(features$Extra1[features$Ext
 # if extra1 id CL then add extra1 to Extra
 features$Extra[features$Extra == "CL"] <- paste0(features$Extra[features$Extra == "CL"], "_", features$Extra1[features$Extra == "CL"])
 
+
 features <- features %>%
     rename(Channel = Extra) %>%
     select(-Extra1, -Extra2)
 # rename channel names to replace "_" with " "
 features$Channel <- gsub("CL_488_1", "CL 488_1", features$Channel)
 features$Channel <- gsub("CL_488_2", "CL 488_2", features$Channel)
+features$Channel <- gsub("CL_488-1", "CL 488_1", features$Channel)
+features$Channel <- gsub("CL_488-2", "CL 488_2", features$Channel)
 features$Channel <- gsub("CL_561", "CL 561", features$Channel)
+features$Channel <- gsub("CP", "None", features$Channel)
+
 
 # time color function
 time_col_fun = colorRamp2(
@@ -167,50 +210,6 @@ column_anno <- HeatmapAnnotation(
     col = list(
         Time = time_col_fun
     )
-)
-# compartment row annotation
-row_compartment = rowAnnotation(
-    Object = features$Compartment,
-        show_legend = TRUE,
-    # change the legend titles
-    annotation_legend_param = list(
-        title_position = "topcenter",
-        title_gp = gpar(fontsize = 16, angle = 0, fontface = "bold", hjust = 1.0),
-        labels_gp = gpar(fontsize = 16,
-        title = gpar(fontsize = 16))),
-    annotation_name_side = "top",
-    annotation_name_gp = gpar(fontsize = 16),
-    # color
-    col = list(
-        Object = c(
-            "Cells" = "#B000B0",
-            "Cytoplasm" = "#00D55B",
-            "Nuclei" = "#0000AB"
-            )
-    )
-)
-row_measurement = rowAnnotation(
-    `Feature group` = features$Measurement,
-           annotation_legend_param = list(
-        title_position = "topcenter",
-        title_gp = gpar(fontsize = 16, angle = 0, fontface = "bold", hjust = 0.5),
-        labels_gp = gpar(fontsize = 16,
-        title = gpar(fontsize = 16))),
-    annotation_name_side = "top",
-    annotation_name_gp = gpar(fontsize = 16),
-    col = list(
-            `Feature group` = c(
-            "AreaShape" = brewer.pal(8, "Paired")[1],
-            "Correlation" = brewer.pal(8, "Paired")[2],
-            "Granularity" = brewer.pal(8, "Paired")[3],
-            "Intensity" = brewer.pal(8, "Paired")[4],
-            "Location" = brewer.pal(8, "Paired")[5],
-            "Neighbors" =  brewer.pal(8, "Paired")[6],
-            "RadialDistribution" = brewer.pal(8, "Paired")[7],
-            "Texture" = brewer.pal(8, "Paired")[8]
-        )
-    ),
-    show_legend = TRUE
 )
 row_channel = rowAnnotation(
     Channel = features$Channel,
@@ -244,13 +243,14 @@ row_channel = rowAnnotation(
             "None" = "#B09FB0")
     )
 )
-row_annotations = c(row_compartment, row_measurement, row_channel)
+row_annotations = c(row_channel)
 
 
 list_of_mats_for_heatmaps <- list()
 list_of_heatmaps <- list()
 heatmap_list <- NULL
 ht_opt(RESET = TRUE)
+ht_opt$message = FALSE
 df$Metadata_dose <- as.numeric(df$Metadata_dose)
 for (dose in unique(df$Metadata_dose)) {
     # check if the last in the number of doses
@@ -273,7 +273,9 @@ for (dose in unique(df$Metadata_dose)) {
     colnames(mat) <- single_dose_df$Metadata_Time
     mat <- mat[-1,]
 
-    if (dose == max(unique(df$Metadata_dose))) {
+    max_dose <- max(unique(df$Metadata_dose))
+
+    if (dose == max_dose) {
 
         heatmap_plot <- Heatmap(
             mat,
@@ -286,7 +288,7 @@ for (dose in unique(df$Metadata_dose)) {
 
             show_heatmap_legend = TRUE,
             heatmap_legend_param = list(
-                        title = "Feature\nvalue",
+                        title = "Feature\nValue",
                         title_position = "topcenter",
                         # direction = "horizontal",
                         title_gp = gpar(fontsize = 16, angle = 0, fontface = "bold", hjust = 1.0),
@@ -308,13 +310,12 @@ for (dose in unique(df$Metadata_dose)) {
             show_row_names = FALSE,
             cluster_columns = FALSE,
             show_column_names = FALSE,
-
             column_names_gp = gpar(fontsize = 16), # Column name label formatting
             row_names_gp = gpar(fontsize = 14),
 
             show_heatmap_legend = FALSE,
             heatmap_legend_param = list(
-                        title = "Feature\nvalue",
+                        title = "Feature\nValue",
                         title_position = "topcenter",
                         title_gp = gpar(fontsize = 16, angle = 0, fontface = "bold", hjust = 1.0),
                         labels_gp = gpar(fontsize = 16),
@@ -324,75 +325,31 @@ for (dose in unique(df$Metadata_dose)) {
                         ),
             row_dend_width = unit(2, "cm"),
             column_title = paste0(dose," uM"),
-            top_annotation = column_anno,
-
+            top_annotation = column_anno
         )
     }
     # add the heatmap to the list
     heatmap_list <- heatmap_list + heatmap_plot
 }
 
-
-width <- 10
-height <- 5
-options(repr.plot.width = width, repr.plot.height = height)
-cell_count_v_time_plot_colored_by_dose <- (
-    ggplot(data = cell_count_df, aes(x = Metadata_Time, y = cell_count))
-    + geom_smooth(aes(color = Metadata_dose), method = "loess", size = 2, se = TRUE, alpha = 0.4)
-    + scale_color_manual(values = color_palette_dose)
-    + labs(
-        x = "Time (minutes)",
-        y = "Cell count per well",
-        color = "Staurosporine\ndose (nM)",
-    )
-    + dose_guides_color
-    + plot_themes
-    # move the legend to the side
-    + theme(
-        legend.position = "right",
-        legend.direction = "vertical",
-        legend.title = element_text(size = 16, face = "bold"),
-        legend.text = element_text(size = 14),
-        axis.title = element_text(size = 16, face = "bold"),
-        axis.text = element_text(size = 14)
-    )
-    + guides(color = guide_legend(ncol = 2))
-
-)
-cell_count_v_time_plot_colored_by_dose
-
-heatmap_grob <- grid.grabExpr(
-    draw(
-    heatmap_list,
-    merge_legends = TRUE,
-)
-)
-
-
-layout <- "
-A
-B
-"
 width <- 17
 height <- 15
-options(repr.plot.width = width, repr.plot.height = height)
-final_figure <- (
-    cell_count_v_time_plot_colored_by_dose
-    # + wrap_elements(
-    #     clip = TRUE,
-    #     full = heatmap_grob
-    #     )
-    + grid.grabExpr(draw(
-        heatmap_list,
-        merge_legends = TRUE,
-    ))
-    + plot_layout(
-        design = layout,
-        heights = c(0.33, 0.66)
-    )
-    + plot_annotation(tag_levels = 'A') & theme(plot.tag = element_text(size = 28))
+options(repr.plot.width=width, repr.plot.height=height)
+# save the figure
+png(
+    filename = file.path(figure_path, "combined_CP_scDINO_aggregated_heatmap.png"),
+    width = width,
+    height = height,
+    units = "in",
+    res = 600
 )
-png(filename = paste0(figure_path, "aggregate_heatmap_CP_features.png"), width = width, height = height, units = "in", res = 600)
-final_figure
+draw(
+    heatmap_list,
+        merge_legends = TRUE,
+
+)
 dev.off()
-final_figure
+draw(
+    heatmap_list,
+        merge_legends = TRUE,
+)
