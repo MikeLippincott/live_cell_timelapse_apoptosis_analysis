@@ -342,8 +342,8 @@ cell_count_v_time_plot_colored_by_dose <- (
     + scale_color_manual(values = color_palette_dose)
     + labs(
         x = "Time (minutes)",
-        y = "Cell count",
-        color = "Stuarosporine\ndose (nM)",
+        y = "Cell count per well",
+        color = "Staurosporine\ndose (nM)",
     )
     + dose_guides_color
     + plot_themes
