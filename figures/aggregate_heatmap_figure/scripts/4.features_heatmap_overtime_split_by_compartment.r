@@ -19,11 +19,7 @@ if (!dir.exists(figure_path)) {
 }
 
 profile_file_path <- file.path("../../../data/CP_aggregated/profiles/aggregated_profile.parquet")
-cell_count_file_path <- file.path(
-    "../../../2.cell_tracks_data/data/combined_stats.parquet"
-)
 df <- arrow::read_parquet(profile_file_path) %>% arrange(Metadata_Well)
-cell_count_df <- arrow::read_parquet(cell_count_file_path)
 # transform the data to standard scalar (-1, 1) format
 for (i in 1:ncol(df)) {
     # make sure the column is not metadata
@@ -37,49 +33,6 @@ for (i in 1:ncol(df)) {
 # map each of the Time points to the actual timepoint
 df$Metadata_Time <- as.numeric(df$Metadata_Time * 60 /2 )
 head(df)
-
-cell_count_df$Metadata_dose <- as.character(cell_count_df$Metadata_dose)
-cell_count_df$Metadata_dose <- factor(
-    cell_count_df$Metadata_dose,
-    levels = c(
-        '0',
-        '0.61',
-        '1.22',
-        '2.44',
-        '4.88',
-        '9.77',
-        '19.53',
-        '39.06',
-        '78.13',
-        '156.25'
-    )
-)
-cell_count_df$Metadata_Time <- as.numeric(cell_count_df$Metadata_Time) * 30
-
-
-# get the well from the well_fov column, get the first part of the string
-# before the underscore and number
-cell_count_df$well <- sub("_.*", "", cell_count_df$well_fov)
-cell_count_df$Metadata_Well <- sub("_.*", "", cell_count_df$well_fov)
-
-# get the counts of cells per timepoint per well
-cell_count_df <- cell_count_df %>%
-    group_by(Metadata_Time, Metadata_Well, Metadata_dose) %>%
-    summarise(
-        cell_count = sum(total_CP_cells),
-        .groups = "drop"
-    )
-
-# merge the cell count df with the profile df to get the dose information
-df <- df %>%
-    left_join(
-        cell_count_df %>% select(Metadata_Well, Metadata_Time,cell_count) %>% distinct(),
-        by = c("Metadata_Well", "Metadata_Time")
-    )
-df$Metadata_cell_count <- df$cell_count
-# drop cell_count column
-df <- df %>% select(-cell_count)
-
 
 metadata_cols <- grep("Metadata_", colnames(df), value = TRUE)
 
@@ -245,6 +198,7 @@ row_channel = rowAnnotation(
     )
 )
 row_annotations = c(row_compartment, row_measurement, row_channel)
+# row_annotations = c(row_measurement, row_channel)
 
 
 list_of_mats_for_heatmaps <- list()
@@ -259,7 +213,7 @@ for (dose in unique(df$Metadata_dose)) {
     single_dose_df <- df %>%
         filter(Metadata_dose == dose) %>%
         group_by(Metadata_Time) %>%
-        select(-Metadata_Well, -Metadata_dose, -Metadata_control, -Metadata_compound,-Metadata_number_of_singlecells,-Metadata_plate, -Metadata_cell_count) %>%
+        select(-Metadata_Well, -Metadata_dose, -Metadata_control, -Metadata_compound,-Metadata_number_of_singlecells,-Metadata_plate,) %>%
         summarise(across(everything(), ~ mean(., na.rm = TRUE))) %>%
         ungroup()
 
@@ -301,7 +255,36 @@ for (dose in unique(df$Metadata_dose)) {
             right_annotation = row_annotations,
             top_annotation = column_anno
         )
-    } else {
+    } else if (dose == min(unique(df$Metadata_dose)))
+    heatmap_plot <- Heatmap(
+            mat,
+            col = col_fun,
+            show_row_names = FALSE,
+            cluster_columns = FALSE,
+            cluster_rows = FALSE,
+            show_column_names = FALSE,
+
+            column_names_gp = gpar(fontsize = 16), # Column name label formatting
+            row_names_gp = gpar(fontsize = 14),
+
+            show_heatmap_legend = FALSE,
+            heatmap_legend_param = list(
+                        title = "Feature\nvalue",
+                        title_position = "topcenter",
+                        title_gp = gpar(fontsize = 16, angle = 0, fontface = "bold", hjust = 1.0),
+                        labels_gp = gpar(fontsize = 16),
+                        legend_height = unit(4, "cm"),
+                        legend_width = unit(3, "cm"),
+                        annotation_legend_side = "bottom"
+                        ),
+            row_dend_width = unit(2, "cm"),
+            column_title = paste0(dose," uM"),
+            top_annotation = column_anno,
+
+    )
+
+
+    else {
         heatmap_plot <- Heatmap(
             mat,
             col = col_fun,
@@ -333,66 +316,16 @@ for (dose in unique(df$Metadata_dose)) {
 }
 
 
-width <- 10
-height <- 5
+width <- 17
+height <- 10
 options(repr.plot.width = width, repr.plot.height = height)
-cell_count_v_time_plot_colored_by_dose <- (
-    ggplot(data = cell_count_df, aes(x = Metadata_Time, y = cell_count))
-    + geom_smooth(aes(color = Metadata_dose), method = "loess", size = 2, se = TRUE, alpha = 0.4)
-    + scale_color_manual(values = color_palette_dose)
-    + labs(
-        x = "Time (minutes)",
-        y = "Cell count per well",
-        color = "Staurosporine\ndose (nM)",
-    )
-    + dose_guides_color
-    + plot_themes
-    # move the legend to the side
-    + theme(
-        legend.position = "right",
-        legend.direction = "vertical",
-        legend.title = element_text(size = 16, face = "bold"),
-        legend.text = element_text(size = 14),
-        axis.title = element_text(size = 16, face = "bold"),
-        axis.text = element_text(size = 14)
-    )
-    + guides(color = guide_legend(ncol = 2))
-
-)
-cell_count_v_time_plot_colored_by_dose
-
-heatmap_grob <- grid.grabExpr(
-    draw(
+png(filename = paste0(figure_path, "aggregate_heatmap_CP_features_by_compartment.png"), width = width, height = height, units = "in", res = 600)
+draw(
     heatmap_list,
     merge_legends = TRUE,
 )
-)
-
-
-layout <- "
-A
-B
-"
-width <- 17
-height <- 15
-options(repr.plot.width = width, repr.plot.height = height)
-final_figure <- (
-    cell_count_v_time_plot_colored_by_dose
-    # + wrap_elements(
-    #     clip = TRUE,
-    #     full = heatmap_grob
-    #     )
-    + grid.grabExpr(draw(
-        heatmap_list,
-        merge_legends = TRUE,
-    ))
-    + plot_layout(
-        design = layout,
-        heights = c(0.33, 0.66)
-    )
-    + plot_annotation(tag_levels = 'A') & theme(plot.tag = element_text(size = 28))
-)
-png(filename = paste0(figure_path, "aggregate_heatmap_CP_features.png"), width = width, height = height, units = "in", res = 600)
-final_figure
 dev.off()
-final_figure
+draw(
+    heatmap_list,
+    merge_legends = TRUE,
+)
