@@ -46,6 +46,7 @@ mini_montage_black_background_output_dir = pathlib.Path(
     "../figures/mini_montage_black_background.png"
 ).resolve()
 mini_montage_black_background_output_dir.parent.mkdir(parents=True, exist_ok=True)
+
 umap_df = pd.read_parquet(umap_file_path)
 # make the time column numeric
 umap_df["Metadata_Time"] = pd.to_numeric(umap_df["Metadata_Time"])
